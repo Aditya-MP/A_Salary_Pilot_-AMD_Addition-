@@ -1,0 +1,46 @@
+# Full local stack. `docker compose up -d` and everything below is running.
+services:
+  db:
+    image: timescale/timescaledb:latest-pg17
+    environment:
+      POSTGRES_USER: salarypilot
+      POSTGRES_PASSWORD: dev_only_never_ship
+      POSTGRES_DB: salarypilot
+    ports: ["5432:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U salarypilot"]
+      interval: 5s
+      retries: 10
+
+  cache:
+    image: valkey/valkey:8-alpine
+    ports: ["6379:6379"]
+    command: ["valkey-server", "--save", "60", "1"]
+
+  # Kafka API without ZooKeeper, in a single container.
+  broker:
+    image: redpandadata/redpanda:latest
+    command:
+      - redpanda
+      - start
+      - --smp=1
+      - --overprovisioned
+      - --kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr=internal://broker:9092,external://localhost:19092
+    ports: ["19092:19092", "9644:9644"]
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:latest
+    command: >
+      mlflow server --host 0.0.0.0 --port 5000
+      --backend-store-uri sqlite:////mlflow/mlflow.db
+      --default-artifact-root /mlflow/artifacts
+    ports: ["5000:5000"]
+    volumes: ["mlflow:/mlflow"]
+
+volumes:
+  pgdata:
+  mlflow:
