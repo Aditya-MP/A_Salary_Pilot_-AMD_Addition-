@@ -1,256 +1,196 @@
-# 💰 SalaryPilot — AI-Powered Wealth Management
+# SalaryPilot
 
-> **AMD Pervasive AI Developer Contest (Slingshot) Submission**
-> Intelligent salary routing, behavioral finance guardrails, and tax-optimized investing — powered by AI.
+**Know exactly how long you could last.**
 
----
+> AMD Pervasive AI Developer Contest (Slingshot) submission.
 
-## 🎯 What is SalaryPilot?
-
-SalaryPilot is a **next-generation personal finance platform** that transforms how salaried professionals manage, invest, and grow their wealth. Instead of manually budgeting and making emotional investment decisions, SalaryPilot uses **AI agents** to automate salary splitting, enforce behavioral guardrails, and optimize for tax efficiency.
-
-### The Problem
-- 78% of Indian millennials have no structured investment plan
-- Emotional trading causes average investors to underperform by 4-6% annually  
-- Tax-saving opportunities worth ₹1.5L+ are missed every year
-- Manual budgeting fails within 3 months for most people
-
-### Our Solution
-An AI-first wealth dashboard that **automatically splits your salary**, protects you from emotional decisions via **Triple Guard**, stages investments via **Quarterly Pulse**, and provides **real-time AI coaching** — all in a stunning cyberpunk neon interface.
+Most personal-finance apps answer *"what do I own?"* — a number that moves on its
+own and that the user can rarely influence. SalaryPilot answers the question
+salaried people are actually carrying around: **if the income stopped today, how
+long before I'm in trouble — and what would genuinely change that?**
 
 ---
 
-## ✨ Key Features
+## The two numbers the product is built on
 
-### 🤖 AI-Powered Salary Splitting
-- **AI Mode**: Machine learning analyzes your income, expenses, and goals to recommend optimal splits across Investments, Needs, and Wants
-- **Manual Mode**: Full slider control with real-time calculations
-- **Risk Profiling**: Conservative, Balanced, or Aggressive allocation presets
-- One-click **Approve Investment → Triple Guard** flow
+### Runway
 
-### 🛡️ Triple Guard — Behavioral Finance Protection
-A 3-step emotional firewall before any investment executes:
-1. **Emotion Check** — 15-second cooldown timer to prevent impulsive decisions
-2. **Peer Benchmark** — Compare your decision against community averages
-3. **Streak Protection** — Maintain your discipline streak for better long-term returns
+How many months you survive with zero income, measured against **essential**
+spending only — rent, food, EMIs, family support — because discretionary
+spending stops on day one of a crisis.
 
-### 📊 Quarterly Pulse — Staged Investing
-- Capital accumulates over 3 months in a low-risk staging pool
-- AI analyzes market conditions and executes bulk investment at optimal timing
-- **Tax-aware allocation** across ELSS, PPF, Large Cap, ESG, Crypto, and NPS
-- Estimated tax savings displayed with Sec 80C/80CCD breakdown
+Liquidity is graded rather than assumed. Money inside a three-year ELSS lock-in
+is not a buffer, and the app refuses to pretend otherwise. Assets are also
+haircut for the fact that a forced sale usually happens in a downturn: equity at
+85%, crypto at 70%, retirement instruments at zero.
 
-### 🎓 Learning Hub (Premium)
-- Bite-sized financial education modules (5-15 min each)
-- **AI Learning Assistant** chatbot for Q&A on financial concepts
-- Curated video recommendations
+The dashboard chart deliberately slopes **down** to zero and labels the month the
+money runs out. Every other chart in every finance app slopes up and to the
+right.
 
-### 🧠 AI Coach Agents (Premium)
-- **Tax Expert Agent** — Legal tax optimization suggestions
-- **Risk Alert Agent** — Volatility monitoring and alerts
-- **Market Rules Agent** — Regulatory change summaries
-- **Portfolio Planner** — Next-month strategy with projected CAGR
-- **Live Gemini Insight** — Real-time AI analysis powered by Google Gemini Pro
+### Freedom Score
 
-### 📈 Portfolio Dashboard
-- Real-time holdings tracking (Indian Equities, Crypto, ESG)
-- Live price simulation with market-like fluctuations
-- Risk exposure breakdown and performance metrics (1M, 3M, 6M, YTD)
+A 0–100 composite of five pillars, each shown with its own score and a
+plain-English verdict — never a black box:
 
-### 📰 Market News
-- Portfolio-impact news with real-time P&L indicators
-- Global financial news feed with source attribution
-
-### 👤 User Profile & Premium
-- KYC details management (PAN validation, bank accounts, UPI)
-- **Premium Subscription Popup** — Monthly (₹499/mo) or Yearly (₹4,999/yr, save 16%)
-- Feature gating for premium-only pages
+| Pillar | Weight | What it measures |
+|---|---|---|
+| Safety runway | 30 | Months of cover vs. a target scaled by dependents |
+| Debt drag | 20 | Debt weighted by **rate**, not balance, and net of deductibility |
+| Savings rate | 20 | Surplus as a share of in-hand, full marks at 30% |
+| Protection | 15 | Term cover vs. 10× income; health cover vs. family need |
+| Freedom progress | 15 | Net worth against 25× annual essential spend |
 
 ---
 
-## 🏗️ Tech Stack
+## What makes it different
 
-| Layer | Technology |
-|-------|-----------|
-| **Framework** | React 19 + TypeScript |
-| **Build Tool** | Vite |
-| **Styling** | Tailwind CSS + Custom Neon Dark Theme |
-| **State Management** | Zustand (with localStorage persistence) |
-| **Routing** | React Router v7 |
-| **Charts** | Recharts |
-| **Animations** | Framer Motion |
-| **Icons** | Lucide React |
-| **AI Integration** | Google Gemini Pro API |
-| **Design System** | Custom glassmorphism + cyberpunk neon aesthetic |
+**Levers, not advice.** Every suggested action is simulated against the user's own
+numbers and ranked by its actual effect on runway. A ₹2,000 SIP increase adds
+*zero* runway; ₹2,000 into a liquid fund adds real weeks. Most apps blur that
+distinction and it is the single most useful thing the product can say.
+Applying a lever mutates the real profile, so the score visibly moves.
 
----
+**Leak Hunter.** Finance apps are excellent at showing what you own and useless at
+showing what you're losing. Dead subscriptions, a card revolving at 42%, idle
+cash earning 3% while a 14% loan runs, unclaimed deductions — all priced as an
+annual figure, because "₹210 a month" feels free and "₹2,520 a year" does not.
 
-## 🎨 Design Philosophy
+**Tax Centre.** Tax is the largest expense of a salaried life and every other app
+treats it as a footnote. This runs both regimes against real declarations,
+reports the break-even deduction level that would flip the answer, shows which of
+the three statutory HRA limits is binding, and tracks deduction headroom against
+the 31 March deadline.
 
-SalaryPilot features a **bold cyberpunk neon dark theme** with:
+**Portfolio that shows what you keep.** After-tax proceeds per position, LTCG/STCG
+classification with days-to-threshold, allocation drift with rupee rebalancing
+amounts, a concentration index, a liquidity ladder, and tax-loss harvesting
+opportunities.
 
-- **Deep dark base** (`#0a0e1a`) with translucent glass panels
-- **Neon accents**: Electric Green (`#00ff88`), Hot Pink (`#ff0080`), Cyan (`#00c8ff`), Amber (`#ffaa00`)
-- **Ambient background blobs** — animated radial gradients that bleed through glassmorphic cards
-- **Glowing borders and shadows** on every interactive element
-- **Canvas-rendered node network** on the auth page with animated data streams
-- **Warm emerald/teal undertones** mixed with hard neon for a balanced duotone aesthetic
-
----
-
-## 🚀 Getting Started
-
-### Prerequisites
-- Node.js 18+ and npm
-
-### Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/Aditya-MP/A_Salary_Pilot_-AMD_Addition-.git
-cd A_Salary_Pilot_-AMD_Addition-
-
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-```
-
-The app will be available at `http://localhost:5173`
-
-### Environment Variables (Optional)
-
-For the AI Coach's live Gemini insight feature, create a `.env` file:
-
-```env
-VITE_GEMINI_API_KEY=your_google_gemini_api_key
-```
-
-> The app works fully without the API key — all other AI features use local computation.
-
-### Build for Production
-
-```bash
-npm run build
-npm run preview
-```
+**Learning Hub ordered by what you're getting wrong.** Fourteen lessons sorted by
+the user's weakest Freedom Score pillar, not by difficulty. Someone bleeding 42%
+on a credit card sees the debt lesson first, not "Introduction to Compound
+Interest". Each lesson names the specific mistake it prevents.
 
 ---
 
-## 📁 Project Structure
+## AI Coach — six agents
+
+Each agent watches one part of the balance sheet and **shows its reasoning**, so
+the advice can be argued with rather than just believed.
+
+| Agent | Watches |
+|---|---|
+| **Runway Guard** | Liquid assets vs. essential burn |
+| **Debt Strategist** | Payoff order by rate and after-tax cost |
+| **Tax Optimiser** | Regime choice, deduction headroom, harvestable losses |
+| **Leak Hunter** | Subscriptions, interest, idle cash, insurance gaps |
+| **Portfolio Doctor** | Allocation drift, concentration, LTCG timing |
+| **Milestone Planner** | Goals against deadlines, freedom horizon |
+
+The earlier line-up was reviewed rather than kept by default. *Market Rules
+Agent* was cut — summarising SEBI circulars is news, not coaching, and it now
+lives on the News page. The three surviving agents were rewritten because each
+previously held a fixed array of three strings that would have been identical for
+every user on the platform. A hardcoded "18–22% CAGR" projection was removed:
+asserting a return with no basis destroys trust, and in India it would not
+survive SEBI scrutiny either.
+
+---
+
+## Design
+
+A **disciplined neon** system: one deep ink base, one primary accent, and neon
+reserved strictly for data and state — gains, losses, alerts. Nothing decorative
+glows.
+
+- All colour lives in `src/design/tokens.css` as custom properties. Tailwind
+  only exposes those tokens, so there is exactly one source of truth.
+- Every page opens with the same quiet `PageHeader`, replacing seven
+  full-bleed saturated gradient banners that made the screens look like seven
+  different products.
+- All numbers are set in a monospaced tabular face so digits don't jitter as
+  live prices tick.
+- One easing family, three durations. Route transitions are a 10px rise over
+  260ms — enough to make the relationship between screens legible, restrained
+  enough to survive the fiftieth navigation of a session.
+- `prefers-reduced-motion` is honoured throughout.
+
+---
+
+## Architecture
 
 ```
 src/
-├── components/
-│   ├── landing/          # Landing page components (Background, UltraBackground)
-│   ├── layout/           # Navbar
-│   └── ui/               # Reusable UI (Button, GlassCard)
-├── data/
-│   └── mockData.ts       # Sample financial data
-├── engine/               # Core AI/computation engines
-│   ├── decisionEngine.ts # Investment decision logic
-│   ├── guardEngine.ts    # Triple Guard behavioral checks
-│   ├── pulseEngine.ts    # Quarterly Pulse staging logic
-│   ├── sustainabilityEngine.ts # ESG scoring
-│   ├── taxEngine.ts      # Tax optimization calculations
-│   └── trendEngine.ts    # Market trend analysis
+├── design/tokens.css       Single source of truth for colour, motion, spacing
+├── domain/
+│   ├── types.ts            The real shape of a salaried person's finances
+│   ├── seed.ts             A deliberately imperfect demo profile
+│   └── curriculum.ts       14 lessons, tagged to Freedom Score pillars
+├── engine/
+│   ├── runwayEngine.ts     Runway, Freedom Score, ranked levers
+│   ├── portfolioEngine.ts  After-tax value, drift, concentration, harvesting
+│   ├── regimeEngine.ts     Old vs new regime, HRA, deduction headroom
+│   ├── leakEngine.ts       Leak detection, payday plan
+│   ├── agents.ts           The six AI Coach agents
+│   ├── guardEngine.ts      Triple Guard behavioural checks
+│   └── pulseEngine.ts      Quarterly staging
 ├── hooks/
-│   └── useLivePrices.ts  # Real-time price simulation hook
-├── layouts/
-│   └── DashboardLayout.tsx # Sidebar + main content layout
-├── pages/
-│   ├── AICoach.tsx        # AI Coach agents (Premium)
-│   ├── AuthPage.tsx       # Login / Sign-up
-│   ├── Dashboard.tsx      # Main dashboard with metrics & charts
-│   ├── LandingPage.tsx    # Public landing page
-│   ├── Learning.tsx       # Learning Hub (Premium)
-│   ├── News.tsx           # Market news feed
-│   ├── Portfolio.tsx      # Holdings & performance
-│   ├── QuarterlyPulse.tsx # Staged investment strategy (Premium)
-│   ├── RiskProfile.tsx    # Risk assessment
-│   ├── SalarySplitting.tsx# AI/Manual salary split + approve
-│   ├── TripleGuard.tsx    # 3-step emotional firewall
-│   └── UserProfile.tsx    # Profile, KYC, premium subscription
-├── services/
-│   └── gemini.ts          # Google Gemini API integration
-├── store/
-│   └── useAppStore.ts     # Zustand global state
-├── types/
-│   └── index.ts           # TypeScript type definitions
-├── App.tsx                # Route definitions
-├── index.css              # Global styles + neon theme
-└── main.tsx               # Entry point
+│   ├── useFinancials.ts    Derives the whole picture once, memoised
+│   └── useLivePrices.ts    One shared ticker for the entire app
+├── components/
+│   ├── primitives/         Card, PageHeader, Stat, Meter, Badge, Segmented
+│   ├── motion/             PageTransition, Reveal, AnimatedNumber
+│   └── charts/             Shared Recharts theme, inline Sparkline
+└── pages/
 ```
 
----
-
-## 🔧 Core Engines
-
-| Engine | Purpose |
-|--------|---------|
-| **Decision Engine** | Analyzes salary, risk profile, and market conditions to recommend optimal investment splits |
-| **Guard Engine** | Implements the Triple Guard behavioral checks (emotion, peer, streak) |
-| **Pulse Engine** | Manages the 3-month staged capital accumulation and bulk execution |
-| **Tax Engine** | Calculates tax-saving opportunities under Sec 80C, 80CCD, LTCG rules |
-| **Sustainability Engine** | Scores ESG investments and green bond allocations |
-| **Trend Engine** | Analyzes market trends for timing recommendations |
+Every screen derives from **one** `FinancialProfile`, so no two pages can
+disagree about the user's own numbers.
 
 ---
 
-## 🏆 AMD Slingshot Hackathon Highlights
+## Running it
 
-### Why SalaryPilot?
-- **Real-world AI application** — Not a toy demo; solves actual financial planning pain points
-- **Multiple AI agents** working in concert (Tax, Risk, Rules, Planner)
-- **Behavioral finance innovation** — Triple Guard is a novel approach to emotional investing protection
-- **Tax optimization** — Automatically routes capital through 80C/80CCD-eligible instruments
-- **Production-quality UI** — Cyberpunk neon dark theme with premium glassmorphism
+```bash
+npm install
+npm run dev      # http://localhost:5173
+npm run build
+npm run lint
+```
 
-### AMD AI Integration Points
-- AI-powered salary split recommendations
-- Multi-agent coaching system (Tax, Risk, Market, Portfolio)
-- Real-time Gemini Pro integration for live market insights
-- Behavioral pattern recognition for streak protection
-- Tax-loss harvesting opportunity detection
+Sign-in is a **test harness**: any credentials sign you in. Premium is a toggle
+that costs nothing.
 
----
+Optional — for the AI Coach's live model insight:
 
-## 📋 Available Scripts
+```env
+VITE_GEMINI_API_KEY=your_key
+```
 
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Start development server (Vite) |
-| `npm run build` | TypeScript check + production build |
-| `npm run preview` | Preview production build locally |
-| `npm run lint` | Run ESLint |
+Everything else is local computation and works without it.
 
 ---
 
-## 🔒 Security & Compliance
+## Tech
 
-- Bank-grade encryption (256-bit SSL)
-- SEBI compliant investment recommendations
-- PAN validation with format checking
-- No sensitive data stored on external servers
-- Local-first architecture with Zustand persistence
+React 19 · TypeScript · Vite · Tailwind (tokens only) · Zustand (persisted) ·
+React Router v7 · Recharts · Framer Motion · Lucide
 
 ---
 
-## 📄 License
+## Honest limitations
 
-This project is built for the **AMD Pervasive AI Developer Contest (Slingshot)**. 
+- **Prices are simulated**, not a live market feed — a shared random walk with a
+  common market factor and per-asset-class volatility, so holdings move together
+  the way real ones do.
+- **News headlines are representative samples.** The rupee impact beside each one
+  is computed from real holdings and the live feed; wiring in a news API would
+  only change the left-hand column.
+- **Tax rates are the FY 2025-26 structure**, held in `regimeEngine.ts`. If slabs
+  change, that is the only file to edit.
+- **Not investment advice.** No returns are asserted anywhere in the product.
 
 ---
 
-## 👨‍💻 Author
-
-**Aditya MP**  
-- GitHub: [@Aditya-MP](https://github.com/Aditya-MP)
-
----
-
-<p align="center">
-  <strong>Built with ❤️ and AI for the AMD Slingshot Hackathon</strong><br/>
-  <em>SalaryPilot — Smarter Finance. Effortless Control.</em>
-</p>
+**Aditya MP** · [@Aditya-MP](https://github.com/Aditya-MP)
