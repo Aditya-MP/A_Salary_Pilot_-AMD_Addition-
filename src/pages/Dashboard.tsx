@@ -3,6 +3,7 @@ import {
     ArrowRight, Zap, Wallet, Check, Droplets, Shield, Compass, TrendingDown,
 } from 'lucide-react';
 import { useFinancials } from '../hooks/useFinancials';
+import { useSimulation } from '../hooks/useSimulation';
 import { useAppStore } from '../store/useAppStore';
 import { PageHeader } from '../components/primitives/PageHeader';
 import { Card, CardHead, CardBody } from '../components/primitives/Card';
@@ -30,7 +31,11 @@ import { money, moneyShort, pct, share, relativeDays, months as fmtMonths } from
    ═══════════════════════════════════════════════════════════════════ */
 
 export default function Dashboard() {
-    const { runway, score, levers, projection, leaks, payday, portfolio } = useFinancials();
+    const { runway, score, levers, projection, leaks, payday, portfolio, profile } = useFinancials();
+
+    // Progressive enhancement: the local point estimate renders instantly;
+    // the simulated distribution appears underneath if the backend answers.
+    const sim = useSimulation(profile, runway, score, 0.075);
     const applyLever = useAppStore((s) => s.applyLever);
     const applied = useAppStore((s) => s.appliedLevers);
 
@@ -198,7 +203,7 @@ export default function Dashboard() {
                 </div>
 
                 {/* ─── Freedom Score ─── */}
-                <FreedomScore score={score} />
+                <FreedomScore score={score} sim={sim} />
 
                 {/* ─── Payday ─── */}
                 <Card>

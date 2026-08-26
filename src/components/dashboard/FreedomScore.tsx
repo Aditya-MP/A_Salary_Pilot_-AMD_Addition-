@@ -3,7 +3,9 @@ import type { FreedomScore as Score } from '../../engine/runwayEngine';
 import { money, share } from '../../lib/format';
 import { useAnimatedValue } from '../../hooks/useAnimatedValue';
 import { Card, CardHead, CardBody } from '../primitives/Card';
-import { Compass } from 'lucide-react';
+import { Compass, Activity } from 'lucide-react';
+import type { SimState } from '../../hooks/useSimulation';
+import { Badge } from '../primitives/Badge';
 
 /* ═══════════════════════════════════════════════════════════════════
    Freedom Score.
@@ -24,7 +26,111 @@ const PILLAR_TONE = {
     good: 'var(--gain)',
 } as const;
 
-export function FreedomScore({ score }: { score: Score }) {
+/* ─── The distribution, when the backend can supply one ──────────────
+   Progressive enhancement: the point estimate above renders instantly
+   from the local engine and never disappears. This band appears
+   underneath only if the Monte Carlo service answers.
+
+   The comparison is the point of the component. A single confident age
+   is computed by compounding an average return with no job loss, no
+   shock and no bad sequence in it — the one future that certainly will
+   not happen. Showing both side by side is the honest presentation. */
+function SimulationBand({ sim, pointEstimate }: { sim: SimState; pointEstimate: number }) {
+    if (sim.status === 'local') return null;
+
+    if (sim.status === 'loading') {
+        return (
+            <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--line-subtle)' }}>
+                <div className="skeleton h-3 w-40 mb-2" />
+                <div className="skeleton h-2 w-full" />
+            </div>
+        );
+    }
+
+    const { freedom_age: fa, probability_reaching_fi: pFI } = sim.data;
+    const fmt = (v: number | null) => (v === null ? 'never' : Math.round(v).toString());
+
+    // Scale the band across a plausible retirement window so the marker
+    // positions mean something rather than filling whatever is available.
+    const LO = 40;
+    const HI = 75;
+    const pos = (v: number | null) => (v === null ? 100 : ((v - LO) / (HI - LO)) * 100);
+
+    const p25 = pos(fa.p25);
+    const p75 = pos(fa.p75);
+
+    return (
+        <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--line-subtle)' }}>
+            <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+                <div className="flex items-center gap-2">
+                    <Activity size={13} style={{ color: 'var(--accent)' }} />
+                    <span className="label">Simulated · {sim.data.n_paths.toLocaleString('en-IN')} paths</span>
+                </div>
+                <Badge tone={pFI > 0.6 ? 'gain' : pFI > 0.35 ? 'warn' : 'loss'}>
+                    {share(pFI * 100)} reach it
+                </Badge>
+            </div>
+
+            {/* The band */}
+            <div className="relative h-8">
+                <div
+                    className="absolute inset-x-0 top-3 h-1.5 rounded-full"
+                    style={{ background: 'rgba(255,255,255,0.06)' }}
+                />
+                <div
+                    className="absolute top-3 h-1.5 rounded-full"
+                    style={{
+                        left: `${Math.max(0, Math.min(100, p25))}%`,
+                        width: `${Math.max(2, Math.min(100, p75) - Math.max(0, p25))}%`,
+                        background: 'var(--accent)',
+                        opacity: 0.55,
+                    }}
+                />
+                {fa.p50 !== null && (
+                    <div
+                        className="absolute top-1.5 w-0.5 h-5 rounded"
+                        style={{ left: `${Math.min(100, pos(fa.p50))}%`, background: 'var(--accent)' }}
+                    />
+                )}
+                {/* The old point estimate, for contrast */}
+                <div
+                    className="absolute top-1.5 w-0.5 h-5 rounded"
+                    style={{
+                        left: `${Math.max(0, Math.min(100, pos(pointEstimate)))}%`,
+                        background: 'var(--text-faint)',
+                    }}
+                />
+                <span className="absolute left-0 top-0 text-[9.5px] text-faint">{LO}</span>
+                <span className="absolute right-0 top-0 text-[9.5px] text-faint">{HI}+</span>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3 mt-1">
+                {([['Best 10%', fa.p10], ['Median', fa.p50], ['Worst 25%', fa.p75]] as const).map(
+                    ([label, v]) => (
+                        <div key={label}>
+                            <p className="label mb-0.5">{label}</p>
+                            <p
+                                className="num text-[14px] font-semibold"
+                                style={{ color: v === null ? 'var(--loss)' : 'var(--text-hi)' }}
+                            >
+                                {fmt(v)}
+                            </p>
+                        </div>
+                    )
+                )}
+            </div>
+
+            <p className="text-[11px] text-lo leading-relaxed mt-3">
+                The single age above assumes an average return every year with no job
+                loss and no shock. Across {sim.data.n_paths.toLocaleString('en-IN')} simulated
+                lives, {share(sim.data.probability_never_running_out * 100)} never run out of
+                money{fa.p50 === null ? ', but most never reach financial independence either' : ''}.
+            </p>
+        </div>
+    );
+}
+
+export function FreedomScore({ score, sim }: { score: Score; sim?: SimState }) {
     const id = useId();
     const shown = useAnimatedValue(score.total, 1100);
 
@@ -159,6 +265,8 @@ export function FreedomScore({ score }: { score: Score }) {
                             </p>
                         </div>
                     </div>
+
+                    {sim && <SimulationBand sim={sim} pointEstimate={score.freedomAge} />}
                 </div>
             </CardBody>
         </Card>

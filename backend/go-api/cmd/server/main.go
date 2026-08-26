@@ -13,6 +13,7 @@ import (
 
 	"github.com/Aditya-MP/salarypilot/go-api/internal/auth"
 	"github.com/Aditya-MP/salarypilot/go-api/internal/config"
+	"github.com/Aditya-MP/salarypilot/go-api/internal/mlclient"
 	"github.com/Aditya-MP/salarypilot/go-api/internal/rpc"
 	"github.com/Aditya-MP/salarypilot/go-api/internal/store"
 )
@@ -61,12 +62,20 @@ func run(log *slog.Logger) error {
 		return err
 	}
 
+	ml := mlclient.New(cfg.MLServiceURL)
+	if ml.Healthy(ctx) {
+		log.Info("model service reachable", "url", cfg.MLServiceURL)
+	} else {
+		log.Warn("model service unreachable; categorisation will degrade",
+			"url", cfg.MLServiceURL)
+	}
+
 	srv := &http.Server{
-		Addr:              cfg.Addr,
-		Handler:           rpc.NewServer(st, issuer, log).Routes(),
-		ReadTimeout:       cfg.ReadTimeout,
-		WriteTimeout:      cfg.WriteTimeout,
-		IdleTimeout:       60 * time.Second,
+		Addr:         cfg.Addr,
+		Handler:      rpc.NewServer(st, issuer, ml, log).Routes(),
+		ReadTimeout:  cfg.ReadTimeout,
+		WriteTimeout: cfg.WriteTimeout,
+		IdleTimeout:  60 * time.Second,
 		// Without this a client can open a connection, dribble headers, and
 		// hold a goroutine open indefinitely. That is Slowloris, and the
 		// default in net/http is no limit at all.

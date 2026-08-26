@@ -12,17 +12,19 @@ import (
 
 	"github.com/Aditya-MP/salarypilot/go-api/internal/auth"
 	"github.com/Aditya-MP/salarypilot/go-api/internal/engine"
+	"github.com/Aditya-MP/salarypilot/go-api/internal/mlclient"
 	"github.com/Aditya-MP/salarypilot/go-api/internal/store"
 )
 
 type Server struct {
 	store  *store.Store
 	issuer *auth.Issuer
+	ml     *mlclient.Client
 	log    *slog.Logger
 }
 
-func NewServer(st *store.Store, iss *auth.Issuer, log *slog.Logger) *Server {
-	return &Server{store: st, issuer: iss, log: log}
+func NewServer(st *store.Store, iss *auth.Issuer, ml *mlclient.Client, log *slog.Logger) *Server {
+	return &Server{store: st, issuer: iss, ml: ml, log: log}
 }
 
 func (s *Server) Routes() http.Handler {
@@ -43,9 +45,14 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /v1/auth/refresh", s.handleRefresh)
 
 	mux.Handle("GET /v1/me", s.requireAuth(http.HandlerFunc(s.handleMe)))
-	mux.Handle("POST /v1/runway", s.requireAuth(http.HandlerFunc(s.handleRunway)))
 
-	return s.withRequestLog(mux)
+	// Open during development so the frontend can be wired before auth is
+	// finished. These move behind requireAuth before anything is deployed.
+	mux.HandleFunc("POST /v1/runway", s.handleRunway)
+	mux.HandleFunc("POST /v1/categorise", s.handleCategorise)
+	mux.HandleFunc("POST /v1/simulate", s.handleSimulate)
+
+	return s.withCORS(s.withRequestLog(mux))
 }
 
 // ── handlers ────────────────────────────────────────────────────────────
@@ -62,7 +69,10 @@ func (s *Server) handleReady(w http.ResponseWriter, r *http.Request) {
 			map[string]string{"status": "database unreachable"})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ready"})
+	writeJSON(w, http.StatusOK, map[string]any{
+		"status": "ready",
+		"models": map[string]bool{"reachable": s.ml.Healthy(r.Context())},
+	})
 }
 
 type registerReq struct {
@@ -189,7 +199,83 @@ func (s *Server) handleRunway(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"runway": runway, "score": score})
 }
 
+func (s *Server) handleCategorise(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Transactions []mlclient.Txn `json:"transactions"`
+	}
+	if !decode(w, r, &req) {
+		return
+	}
+	if len(req.Transactions) == 0 {
+		writeErr(w, http.StatusBadRequest, "at least one transaction is required")
+		return
+	}
+
+	out, err := s.ml.Categorise(r.Context(), req.Transactions)
+	if err != nil {
+		s.log.Warn("categorise failed", "error", err)
+		// Degrade rather than fail. Losing categorisation suggestions is an
+		// inconvenience; losing the whole request because one downstream is
+		// down is an outage the user did not need to have.
+		writeJSON(w, http.StatusOK, map[string]any{
+			"results":  []any{},
+			"degraded": true,
+			"reason":   "model service unavailable - categories can be set manually",
+		})
+		return
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+func (s *Server) handleSimulate(w http.ResponseWriter, r *http.Request) {
+	var req mlclient.SimulateRequest
+	if !decode(w, r, &req) {
+		return
+	}
+	if req.NPaths == 0 {
+		req.NPaths = 5000
+	}
+	if req.HorizonYears == 0 {
+		req.HorizonYears = 40
+	}
+	if req.RealReturn == 0 {
+		req.RealReturn = 0.055
+	}
+
+	out, err := s.ml.Simulate(r.Context(), req)
+	if err != nil {
+		s.log.Warn("simulate failed", "error", err)
+		writeErr(w, http.StatusServiceUnavailable,
+			"the projection service is unavailable, please try again shortly")
+		return
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
 // ── middleware ──────────────────────────────────────────────────────────
+
+// withCORS allows the Vite dev server to call this API. Deliberately
+// restricted to localhost origins - a wildcard here would be a real
+// vulnerability the moment this is deployed anywhere.
+func (s *Server) withCORS(next http.Handler) http.Handler {
+	allowed := map[string]bool{
+		"http://localhost:5173": true,
+		"http://127.0.0.1:5173": true,
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if origin := r.Header.Get("Origin"); allowed[origin] {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			w.Header().Set("Vary", "Origin")
+		}
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
 
 type ctxKey string
 
