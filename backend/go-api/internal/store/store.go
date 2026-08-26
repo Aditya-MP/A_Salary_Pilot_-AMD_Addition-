@@ -47,6 +47,12 @@ func New(ctx context.Context, dsn string) (*Store, error) {
 
 func (s *Store) Close() { s.pool.Close() }
 
+// Pool exposes the connection pool for packages that own their own SQL, like
+// the ledger. Deliberately not a general escape hatch - the alternative was
+// funnelling every wallet query through this package, which would make it a
+// grab bag rather than a store.
+func (s *Store) Pool() *pgxpool.Pool { return s.pool }
+
 // Ping backs the readiness probe.
 func (s *Store) Ping(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)

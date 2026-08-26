@@ -14,17 +14,20 @@ import (
 	"github.com/Aditya-MP/salarypilot/go-api/internal/engine"
 	"github.com/Aditya-MP/salarypilot/go-api/internal/mlclient"
 	"github.com/Aditya-MP/salarypilot/go-api/internal/store"
+	"github.com/Aditya-MP/salarypilot/go-api/internal/wallet"
 )
 
 type Server struct {
 	store  *store.Store
 	issuer *auth.Issuer
 	ml     *mlclient.Client
+	wallet *wallet.Service
 	log    *slog.Logger
 }
 
-func NewServer(st *store.Store, iss *auth.Issuer, ml *mlclient.Client, log *slog.Logger) *Server {
-	return &Server{store: st, issuer: iss, ml: ml, log: log}
+func NewServer(st *store.Store, iss *auth.Issuer, ml *mlclient.Client,
+	w *wallet.Service, log *slog.Logger) *Server {
+	return &Server{store: st, issuer: iss, ml: ml, wallet: w, log: log}
 }
 
 func (s *Server) Routes() http.Handler {
@@ -52,6 +55,15 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /v1/categorise", s.handleCategorise)
 	mux.HandleFunc("POST /v1/simulate", s.handleSimulate)
 
+	// Wallet moves money, so every route is behind auth with no exceptions.
+	// The dev-open pattern above is acceptable for stateless computation and
+	// is not acceptable here.
+	mux.Handle("GET /v1/wallet", s.requireAuth(http.HandlerFunc(s.handleWallet)))
+	mux.Handle("GET /v1/wallet/history", s.requireAuth(http.HandlerFunc(s.handleWalletHistory)))
+	mux.Handle("POST /v1/wallet/topup", s.requireAuth(http.HandlerFunc(s.handleTopUp)))
+	mux.Handle("POST /v1/wallet/invest", s.requireAuth(http.HandlerFunc(s.handleInvest)))
+	mux.Handle("POST /v1/wallet/withdraw", s.requireAuth(http.HandlerFunc(s.handleWithdraw)))
+
 	return s.withCORS(s.withRequestLog(mux))
 }
 
@@ -69,9 +81,21 @@ func (s *Server) handleReady(w http.ResponseWriter, r *http.Request) {
 			map[string]string{"status": "database unreachable"})
 		return
 	}
+	drift, derr := s.wallet.Drift(r.Context())
+	if derr == nil && drift > 0 {
+		// The ledger and its cached balances disagree. That is corruption and
+		// this instance should not take traffic until somebody looks.
+		s.log.Error("LEDGER DRIFT DETECTED", "accounts", drift)
+		writeJSON(w, http.StatusServiceUnavailable, map[string]any{
+			"status": "ledger drift detected", "accounts": drift,
+		})
+		return
+	}
+
 	writeJSON(w, http.StatusOK, map[string]any{
-		"status": "ready",
-		"models": map[string]bool{"reachable": s.ml.Healthy(r.Context())},
+		"status":       "ready",
+		"models":       map[string]bool{"reachable": s.ml.Healthy(r.Context())},
+		"ledger_drift": drift,
 	})
 }
 
@@ -116,6 +140,12 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		s.log.Error("create user", "error", err)
+		writeErr(w, http.StatusInternalServerError, "could not create account")
+		return
+	}
+
+	if err := s.wallet.EnsureAccounts(r.Context(), u.ID); err != nil {
+		s.log.Error("create ledger accounts", "error", err, "user", u.ID)
 		writeErr(w, http.StatusInternalServerError, "could not create account")
 		return
 	}
@@ -250,6 +280,101 @@ func (s *Server) handleSimulate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, out)
+}
+
+// ── wallet ──────────────────────────────────────────────────────────────
+//
+// SIMULATED MONEY. No real funds move; see internal/wallet.
+
+func (s *Server) handleWallet(w http.ResponseWriter, r *http.Request) {
+	bal, err := s.wallet.Balance(r.Context(), userIDFrom(r.Context()))
+	if err != nil {
+		s.log.Error("wallet balance", "error", err)
+		writeErr(w, http.StatusInternalServerError, "could not read your wallet")
+		return
+	}
+	writeJSON(w, http.StatusOK, bal)
+}
+
+func (s *Server) handleWalletHistory(w http.ResponseWriter, r *http.Request) {
+	entries, err := s.wallet.History(r.Context(), userIDFrom(r.Context()), 50)
+	if err != nil {
+		s.log.Error("wallet history", "error", err)
+		writeErr(w, http.StatusInternalServerError, "could not read your history")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"entries": entries})
+}
+
+type moneyReq struct {
+	AmountPaise    int64  `json:"amount_paise"`
+	Ticker         string `json:"ticker,omitempty"`
+	UnitPricePaise int64  `json:"unit_price_paise,omitempty"`
+	IdempotencyKey string `json:"idempotency_key"`
+	Memo           string `json:"memo,omitempty"`
+}
+
+// Every money endpoint requires an idempotency key from the client. Without
+// one a retried request - a double tap, a network retry, a reconnect - moves
+// money twice, and the user has no way to tell that happened.
+func (s *Server) moneyResult(w http.ResponseWriter, txnID string, err error) {
+	switch {
+	case errors.Is(err, wallet.ErrInsufficientFunds):
+		writeErr(w, http.StatusUnprocessableEntity,
+			"not enough in your wallet for that")
+	case errors.Is(err, wallet.ErrInvalidAmount):
+		writeErr(w, http.StatusBadRequest, "amount must be greater than zero")
+	case err != nil:
+		s.log.Error("wallet operation", "error", err)
+		writeErr(w, http.StatusInternalServerError, "the transaction could not be completed")
+	default:
+		writeJSON(w, http.StatusOK, map[string]any{
+			"transaction_id": txnID,
+			"simulated":      true,
+		})
+	}
+}
+
+func (s *Server) handleTopUp(w http.ResponseWriter, r *http.Request) {
+	var req moneyReq
+	if !decode(w, r, &req) {
+		return
+	}
+	if req.IdempotencyKey == "" {
+		writeErr(w, http.StatusBadRequest, "idempotency_key is required")
+		return
+	}
+	id, err := s.wallet.TopUp(r.Context(), userIDFrom(r.Context()),
+		req.AmountPaise, req.IdempotencyKey, req.Memo)
+	s.moneyResult(w, id, err)
+}
+
+func (s *Server) handleInvest(w http.ResponseWriter, r *http.Request) {
+	var req moneyReq
+	if !decode(w, r, &req) {
+		return
+	}
+	if req.IdempotencyKey == "" || req.Ticker == "" {
+		writeErr(w, http.StatusBadRequest, "ticker and idempotency_key are required")
+		return
+	}
+	id, err := s.wallet.Invest(r.Context(), userIDFrom(r.Context()), req.Ticker,
+		req.AmountPaise, req.UnitPricePaise, req.IdempotencyKey, req.Memo)
+	s.moneyResult(w, id, err)
+}
+
+func (s *Server) handleWithdraw(w http.ResponseWriter, r *http.Request) {
+	var req moneyReq
+	if !decode(w, r, &req) {
+		return
+	}
+	if req.IdempotencyKey == "" {
+		writeErr(w, http.StatusBadRequest, "idempotency_key is required")
+		return
+	}
+	id, err := s.wallet.Withdraw(r.Context(), userIDFrom(r.Context()),
+		req.AmountPaise, req.IdempotencyKey, req.Memo)
+	s.moneyResult(w, id, err)
 }
 
 // ── middleware ──────────────────────────────────────────────────────────

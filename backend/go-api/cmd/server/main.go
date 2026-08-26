@@ -16,6 +16,7 @@ import (
 	"github.com/Aditya-MP/salarypilot/go-api/internal/mlclient"
 	"github.com/Aditya-MP/salarypilot/go-api/internal/rpc"
 	"github.com/Aditya-MP/salarypilot/go-api/internal/store"
+	"github.com/Aditya-MP/salarypilot/go-api/internal/wallet"
 )
 
 func main() {
@@ -72,7 +73,7 @@ func run(log *slog.Logger) error {
 
 	srv := &http.Server{
 		Addr:         cfg.Addr,
-		Handler:      rpc.NewServer(st, issuer, ml, log).Routes(),
+		Handler:      rpc.NewServer(st, issuer, ml, wallet.New(st.Pool()), log).Routes(),
 		ReadTimeout:  cfg.ReadTimeout,
 		WriteTimeout: cfg.WriteTimeout,
 		IdleTimeout:  60 * time.Second,
