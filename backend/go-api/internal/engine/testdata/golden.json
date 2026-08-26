@@ -1,0 +1,56 @@
+{
+  "runway": {
+    "essentialBurn": 8690000,
+    "discretionaryBurn": 2401800,
+    "debtService": 2050000,
+    "totalBurn": 11091800,
+    "liquidToday": 51096660,
+    "liquid1y": 83560790,
+    "locked": 28414000,
+    "months": 5.879937859608745,
+    "target": 7,
+    "gap": 9733340,
+    "status": "building"
+  },
+  "score": {
+    "total": 54,
+    "netWorth": 82350600,
+    "fiNumber": 2607000000,
+    "fiProgress": 0.031588262370540854,
+    "yearsToFreedom": 24.9,
+    "surplus": 1308200,
+    "savingsRate": 0.1055,
+    "pillars": [
+      {
+        "key": "runway",
+        "score": 25.19973368403748,
+        "max": 30,
+        "state": "good"
+      },
+      {
+        "key": "debt",
+        "score": 15.86730615507594,
+        "max": 20,
+        "state": "ok"
+      },
+      {
+        "key": "savings",
+        "score": 7.033333333333333,
+        "max": 20,
+        "state": "weak"
+      },
+      {
+        "key": "protection",
+        "score": 5.898081534772182,
+        "max": 15,
+        "state": "weak"
+      },
+      {
+        "key": "growth",
+        "score": 0.4738239355581128,
+        "max": 15,
+        "state": "bad"
+      }
+    ]
+  }
+}
