@@ -10,6 +10,7 @@ import News from './pages/News';
 import Learning from './pages/Learning';
 import AICoach from './pages/AICoach';
 import TaxCentre from './pages/TaxCentre';
+import Transactions from './pages/Transactions';
 import RiskProfile from './pages/RiskProfile';
 import LandingPage from './pages/LandingPage';
 import AuthPage from './pages/AuthPage';
@@ -37,6 +38,7 @@ function App() {
                     <Route index element={<Dashboard />} />
                     <Route path="salary-splitting" element={<SalarySplitting />} />
                     <Route path="tax" element={<TaxCentre />} />
+                    <Route path="transactions" element={<Transactions />} />
                     <Route path="risk-profile" element={<RiskProfile />} />
                     <Route path="triple-guard" element={<TripleGuard />} />
                     <Route path="quarterly-pulse" element={<QuarterlyPulse />} />

@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
     LayoutDashboard, Wallet, TrendingUp, Briefcase, Newspaper,
     GraduationCap, Bot, User, Crown, LogOut, PanelLeftClose, PanelLeft,
-    Receipt, Menu, Activity,
+    Receipt, Menu, Activity, Wand2,
 } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import { useFinancials } from '../hooks/useFinancials';
@@ -35,6 +35,7 @@ const GROUPS: { title: string; items: { to: string; icon: React.ElementType; lab
         items: [
             { to: '/dashboard', icon: LayoutDashboard, label: 'Overview' },
             { to: '/dashboard/salary-splitting', icon: Wallet, label: 'Salary Routing' },
+            { to: '/dashboard/transactions', icon: Wand2, label: 'Transactions' },
             { to: '/dashboard/tax', icon: Receipt, label: 'Tax Centre' },
         ],
     },
