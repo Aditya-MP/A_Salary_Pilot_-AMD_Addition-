@@ -1,186 +1,368 @@
 import { useState } from 'react';
-import { Outlet, NavLink } from 'react-router-dom';
-import { LayoutDashboard, DollarSign, TrendingUp, Briefcase, Newspaper, GraduationCap, Bot, LogOut, Sparkles, User, Crown } from 'lucide-react';
+import { Outlet, NavLink, useLocation, Link, useNavigate } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
+import {
+    LayoutDashboard, Wallet, TrendingUp, Briefcase, Newspaper,
+    GraduationCap, Bot, User, Crown, LogOut, PanelLeftClose, PanelLeft,
+    Receipt, Menu, Activity,
+} from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
+import { useFinancials } from '../hooks/useFinancials';
+import { PageTransition } from '../components/motion/PageTransition';
+import { months } from '../lib/format';
+import { cn } from '../lib/cn';
+import { PricingModal } from '../components/PricingModal';
+import { MarketBackground } from '../components/background/MarketBackground';
+
+/* ═══════════════════════════════════════════════════════════════════
+   App shell.
+
+   Changes that matter:
+   • Navigation is grouped into Plan / Grow / Learn instead of one flat
+     list of nine items. A flat list forces the user to re-read every
+     label each time; groups let them jump to a region.
+   • Premium routes are no longer hidden from the sidebar. Hiding them
+     meant a non-paying user could not discover the product's best
+     features — they simply saw a shorter menu. They are now visible
+     with a lock, and the pages themselves show a real preview.
+   • The rail carries the live runway figure, so the one number that
+     matters is on screen no matter which page you are on.
+   ═══════════════════════════════════════════════════════════════════ */
+
+const GROUPS: { title: string; items: { to: string; icon: React.ElementType; label: string; premium?: boolean }[] }[] = [
+    {
+        title: 'Plan',
+        items: [
+            { to: '/dashboard', icon: LayoutDashboard, label: 'Overview' },
+            { to: '/dashboard/salary-splitting', icon: Wallet, label: 'Salary Routing' },
+            { to: '/dashboard/tax', icon: Receipt, label: 'Tax Centre' },
+        ],
+    },
+    {
+        title: 'Grow',
+        items: [
+            { to: '/dashboard/portfolio', icon: Briefcase, label: 'Portfolio' },
+            { to: '/dashboard/quarterly-pulse', icon: TrendingUp, label: 'Quarterly Pulse', premium: true },
+            { to: '/dashboard/news', icon: Newspaper, label: 'Market News' },
+        ],
+    },
+    {
+        title: 'Learn',
+        items: [
+            { to: '/dashboard/learning', icon: GraduationCap, label: 'Learning Hub', premium: true },
+            { to: '/dashboard/ai-coach', icon: Bot, label: 'AI Coach', premium: true },
+        ],
+    },
+];
 
 export default function DashboardLayout() {
-  const isPremium = useAppStore((s) => s.isPremium);
-  const togglePremium = useAppStore((s) => s.togglePremium);
-  const [showPricingPopup, setShowPricingPopup] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('monthly');
-  const [activatedMsg, setActivatedMsg] = useState(false);
+    const isPremium = useAppStore((s) => s.isPremium);
+    const logout = useAppStore((s) => s.logout);
+    const bgIntensity = useAppStore((s) => s.bgIntensity);
+    const setBgIntensity = useAppStore((s) => s.setBgIntensity);
+    const navigate = useNavigate();
+    const [collapsed, setCollapsed] = useState(false);
+    const [mobileOpen, setMobileOpen] = useState(false);
+    const [pricing, setPricing] = useState(false);
+    const location = useLocation();
+    const { runway } = useFinancials();
 
-  const handleLogout = () => {
-    localStorage.removeItem('salary-pilot-storage');
-    window.location.href = '/';
-  };
+    const handleLogout = () => {
+        logout();
+        navigate('/');
+    };
 
-  const handleActivatePremium = () => {
-    togglePremium();
-    setShowPricingPopup(false);
-    setActivatedMsg(true);
-    setTimeout(() => setActivatedMsg(false), 3000);
-  };
+    const runwayTone =
+        runway.status === 'critical' ? 'var(--loss)'
+            : runway.status === 'thin' ? 'var(--warn)'
+                : runway.status === 'building' ? 'var(--info)'
+                    : 'var(--gain)';
 
-  const premiumRoutes = ['/dashboard/quarterly-pulse', '/dashboard/learning', '/dashboard/ai-coach'];
-
-  const navItems = [
-    { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { to: '/dashboard/salary-splitting', icon: DollarSign, label: 'Salary Splitting' },
-    { to: '/dashboard/quarterly-pulse', icon: TrendingUp, label: 'Quarterly Pulse' },
-    { to: '/dashboard/portfolio', icon: Briefcase, label: 'Portfolio' },
-    { to: '/dashboard/news', icon: Newspaper, label: 'News' },
-    { to: '/dashboard/learning', icon: GraduationCap, label: 'Learning Hub' },
-    { to: '/dashboard/ai-coach', icon: Bot, label: 'AI Coach' },
-    { to: '/dashboard/profile', icon: User, label: 'Profile' },
-  ];
-
-  return (
-    <div className="flex h-screen overflow-hidden relative">
-      {/* Neon + warm opposite ambient blobs */}
-      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        {/* Hard neon */}
-        <div className="absolute -top-40 -right-40 w-[600px] h-[600px] rounded-full bg-[#00ff88]/[0.08] blur-[150px] animate-breathe" />
-        <div className="absolute top-1/2 -left-48 w-[500px] h-[500px] rounded-full bg-[#ff0080]/[0.07] blur-[130px] animate-float-slow" />
-        <div className="absolute -bottom-40 right-1/3 w-[500px] h-[500px] rounded-full bg-[#00c8ff]/[0.06] blur-[120px] animate-float-slower" />
-        <div className="absolute top-1/4 left-1/3 w-[400px] h-[400px] rounded-full bg-[#ffaa00]/[0.05] blur-[100px] animate-float" />
-        {/* Warm opposite (landing-style emerald/teal) */}
-        <div className="absolute bottom-1/4 -left-20 w-[500px] h-[500px] rounded-full blur-[160px] animate-float-slower" style={{ background: 'rgba(16,185,129,0.05)' }} />
-        <div className="absolute -top-20 left-1/2 w-[400px] h-[400px] rounded-full blur-[140px] animate-breathe" style={{ background: 'rgba(20,184,166,0.04)' }} />
-      </div>
-
-      {/* Sidebar — dark glass with neon edge */}
-      <aside className="w-72 m-3 flex flex-col rounded-2xl overflow-hidden relative z-10" style={{
-        background: 'rgba(10,14,26,0.85)',
-        backdropFilter: 'blur(24px) saturate(1.4)',
-        WebkitBackdropFilter: 'blur(24px) saturate(1.4)',
-        border: '1px solid rgba(0,255,136,0.15)',
-        boxShadow: '0 0 2px rgba(0,255,136,0.3), 0 8px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.03)'
-      }}>
-        <div className="p-6">
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#00ff88] to-[#00c8ff] flex items-center justify-center" style={{ boxShadow: '0 0 15px rgba(0,255,136,0.4)' }}>
-              <Sparkles className="text-black" size={20} />
-            </div>
-            <div>
-              <h1 className="text-xl font-display font-bold text-white tracking-tight">SalaryPilot</h1>
-              <p className="text-[10px] text-[#00ff88] font-medium tracking-widest uppercase" style={{ textShadow: '0 0 8px rgba(0,255,136,0.4)' }}>Financial Autopilot</p>
-            </div>
-          </div>
-        </div>
-
-        <nav className="flex-1 px-3 py-2 space-y-0.5 overflow-y-auto">
-          {navItems
-            .filter((item) => isPremium || !premiumRoutes.includes(item.to))
-            .map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.to === '/dashboard'}
-                className={({ isActive }) =>
-                  `group flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-200 text-sm relative ${isActive
-                    ? 'text-[#00ff88] font-semibold'
-                    : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
-                  }`
-                }
-              >
-                {({ isActive }) => (
-                  <>
-                    {isActive && <div className="absolute inset-0 rounded-xl bg-[#00ff88]/[0.06] border border-[#00ff88]/20" />}
-                    <div
-                      className={`relative z-10 w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isActive
-                        ? 'bg-gradient-to-br from-[#00ff88] to-[#00c8ff] text-black' : 'bg-white/[0.04] text-slate-500 group-hover:bg-white/[0.08] group-hover:text-slate-300'}`}
-                      style={isActive ? { boxShadow: '0 0 12px rgba(0,255,136,0.3)' } : {}}
-                    >
-                      <item.icon size={16} />
+    const rail = (
+        <>
+            {/* ─── Brand ─── */}
+            <div className={cn('flex items-center gap-2.5 px-4 h-16 shrink-0', collapsed && 'justify-center px-0')}>
+                <div
+                    className="w-8 h-8 rounded-[10px] grid place-items-center shrink-0"
+                    style={{ background: 'var(--accent)' }}
+                >
+                    <span className="font-display font-extrabold text-[15px]" style={{ color: 'var(--accent-ink)' }}>S</span>
+                </div>
+                {!collapsed && (
+                    <div className="min-w-0">
+                        <p className="font-display font-bold text-[15px] text-hi leading-tight">SalaryPilot</p>
+                        <p className="text-[10px] text-faint leading-tight">Financial autopilot</p>
                     </div>
-                    <span className="relative z-10 font-medium">{item.label}</span>
-                    {isActive && <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-[#00ff88] rounded-l-full" style={{ boxShadow: '0 0 8px rgba(0,255,136,0.5)' }} />}
-                  </>
                 )}
-              </NavLink>
-            ))}
-        </nav>
+            </div>
 
-        <div className="p-3 border-t border-[#00ff88]/10 space-y-0.5">
-          <button onClick={() => isPremium ? togglePremium() : setShowPricingPopup(true)}
-            className={`group flex items-center gap-3 px-3.5 py-2.5 w-full rounded-xl transition-all duration-200 text-sm ${isPremium
-              ? 'text-[#ffaa00]'
-              : 'text-slate-400 hover:text-[#ffaa00] hover:bg-[#ffaa00]/[0.05]'
-              }`}
-            style={isPremium ? { background: 'rgba(255,170,0,0.06)', border: '1px solid rgba(255,170,0,0.15)' } : {}}>
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isPremium
-              ? 'bg-gradient-to-br from-[#ffaa00] to-[#ff6600] text-black' : 'bg-white/[0.04] group-hover:bg-[#ffaa00]/10'}`}
-              style={isPremium ? { boxShadow: '0 0 12px rgba(255,170,0,0.3)' } : {}}>
-              <Crown size={16} />
-            </div>
-            <span className="font-medium">Premium</span>
-            <div className={`ml-auto w-9 h-5 rounded-full transition-all duration-300 relative ${isPremium ? 'bg-[#ffaa00]' : 'bg-white/10'}`} style={isPremium ? { boxShadow: '0 0 8px rgba(255,170,0,0.4)' } : {}}>
-              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all duration-300 ${isPremium ? 'left-[18px]' : 'left-0.5'}`} />
-            </div>
-          </button>
+            {/* ─── Runway readout: always visible, on every page ─── */}
+            {!collapsed && (
+                <Link
+                    to="/dashboard"
+                    className="mx-3 mb-3 p-3 rounded-[var(--r-md)] block surface-interactive"
+                    style={{ background: 'var(--surface-2)', border: '1px solid var(--line)' }}
+                >
+                    <p className="label mb-1.5">Your runway</p>
+                    <p className="num text-xl font-semibold leading-none" style={{ color: runwayTone }}>
+                        {months(runway.months)}
+                    </p>
+                    <div className="mt-2 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.07)' }}>
+                        <div
+                            className="h-full rounded-full transition-[width] duration-700 ease-smooth"
+                            style={{
+                                width: `${Math.min(100, (runway.months / runway.target) * 100)}%`,
+                                background: runwayTone,
+                            }}
+                        />
+                    </div>
+                    <p className="text-[10.5px] text-faint mt-1.5">
+                        Safe at {runway.target.toFixed(0)} months
+                    </p>
+                </Link>
+            )}
 
-          <button onClick={handleLogout}
-            className="group flex items-center gap-3 px-3.5 py-2.5 w-full rounded-xl text-slate-500 hover:text-[#ff0080] hover:bg-[#ff0080]/[0.05] transition-all duration-200">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/[0.04] group-hover:bg-[#ff0080]/10 transition-all">
-              <LogOut size={16} />
-            </div>
-            <span className="text-sm font-medium">Reset & Logout</span>
-          </button>
-        </div>
-      </aside>
-
-      {/* Main content — dark glass */}
-      <main className="flex-1 relative z-10 m-3 ml-0 rounded-2xl overflow-hidden" style={{
-        background: 'rgba(10,14,26,0.6)',
-        backdropFilter: 'blur(20px) saturate(1.3)',
-        WebkitBackdropFilter: 'blur(20px) saturate(1.3)',
-        border: '1px solid rgba(0,255,136,0.08)',
-        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.02), 0 0 1px rgba(0,255,136,0.2)'
-      }}>
-        <div className="h-full overflow-y-auto">
-          <Outlet />
-        </div>
-      </main>
-
-      {/* ── Pricing Popup Modal ── */}
-      {showPricingPopup && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => setShowPricingPopup(false)}>
-          <div className="bg-[#0a0e1a] rounded-2xl max-w-lg w-full mx-4 overflow-hidden border border-[#ffaa00]/15" onClick={e => e.stopPropagation()} style={{ boxShadow: '0 0 40px rgba(255,170,0,0.06)' }}>
-            <div className="px-6 pt-6 pb-4 border-b border-[#ffaa00]/10 text-center">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#ffaa00] to-[#ff6600] flex items-center justify-center mx-auto mb-3" style={{ boxShadow: '0 0 20px rgba(255,170,0,0.2)' }}><Crown className="text-black" size={22} /></div>
-              <h3 className="text-xl font-bold text-white">Choose Your Plan</h3>
-              <p className="text-slate-500 text-sm mt-1">Unlock AI Coach, Learning Hub & Quarterly Pulse</p>
-            </div>
-            <div className="px-6 py-5 grid grid-cols-2 gap-4">
-              <button onClick={() => setSelectedPlan('monthly')} className={`relative rounded-xl p-5 text-left transition-all border-2 ${selectedPlan === 'monthly' ? 'border-[#00ff88]' : 'border-white/[0.06] hover:border-white/15'}`} style={selectedPlan === 'monthly' ? { background: 'rgba(0,255,136,0.04)', boxShadow: '0 0 15px rgba(0,255,136,0.06)' } : { background: 'rgba(255,255,255,0.02)' }}>
-                <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-2">Monthly</p>
-                <p className="text-2xl font-bold text-white">₹499<span className="text-sm font-normal text-slate-500">/mo</span></p>
-                <p className="text-[10px] text-slate-500 mt-1">Billed monthly</p>
-                {selectedPlan === 'monthly' && <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-[#00ff88] flex items-center justify-center" style={{ boxShadow: '0 0 8px rgba(0,255,136,0.4)' }}><svg className="w-3 h-3 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg></div>}
-              </button>
-              <button onClick={() => setSelectedPlan('yearly')} className={`relative rounded-xl p-5 text-left transition-all border-2 ${selectedPlan === 'yearly' ? 'border-[#ffaa00]' : 'border-white/[0.06] hover:border-white/15'}`} style={selectedPlan === 'yearly' ? { background: 'rgba(255,170,0,0.04)', boxShadow: '0 0 15px rgba(255,170,0,0.06)' } : { background: 'rgba(255,255,255,0.02)' }}>
-                <div className="flex items-center gap-2 mb-2"><p className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Yearly</p><span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#ffaa00]/10 text-[#ffaa00] border border-[#ffaa00]/20">SAVE 16%</span></div>
-                <p className="text-2xl font-bold text-white">₹4,999<span className="text-sm font-normal text-slate-500">/yr</span></p>
-                <p className="text-[10px] text-slate-500 mt-1">₹416/mo · Billed yearly</p>
-                {selectedPlan === 'yearly' && <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-[#ffaa00] flex items-center justify-center" style={{ boxShadow: '0 0 8px rgba(255,170,0,0.4)' }}><svg className="w-3 h-3 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg></div>}
-              </button>
-            </div>
-            <div className="px-6 pb-4">
-              <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 space-y-2">
-                {['AI Wealth Coach — personalized advice', 'Learning Hub — financial education', 'Quarterly Pulse — staged investing', 'Priority Support — 24/7 chat'].map(f => (
-                  <div key={f} className="flex items-center gap-2 text-sm text-slate-400"><div className="w-4 h-4 rounded-full bg-[#00ff88]/10 flex items-center justify-center flex-shrink-0"><svg className="w-2.5 h-2.5 text-[#00ff88]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg></div>{f}</div>
+            {/* ─── Navigation ─── */}
+            <nav className="flex-1 overflow-y-auto px-2 pb-2 space-y-4">
+                {GROUPS.map((group) => (
+                    <div key={group.title}>
+                        {!collapsed && <p className="label px-3 mb-1.5">{group.title}</p>}
+                        <div className="space-y-0.5">
+                            {group.items.map((item) => {
+                                const locked = item.premium && !isPremium;
+                                return (
+                                    <NavLink
+                                        key={item.to}
+                                        to={item.to}
+                                        end={item.to === '/dashboard'}
+                                        onClick={() => setMobileOpen(false)}
+                                        title={collapsed ? item.label : undefined}
+                                        className={({ isActive }) =>
+                                            cn(
+                                                'group relative flex items-center gap-2.5 rounded-[var(--r-md)]',
+                                                'px-3 py-2 text-[13px] font-medium transition-colors duration-150',
+                                                collapsed && 'justify-center px-0',
+                                                isActive
+                                                    ? 'text-[var(--accent)]'
+                                                    : 'text-lo hover:text-hi hover:bg-[var(--surface-2)]'
+                                            )
+                                        }
+                                    >
+                                        {({ isActive }) => (
+                                            <>
+                                                {isActive && (
+                                                    <motion.span
+                                                        layoutId="nav-active"
+                                                        className="absolute inset-0 rounded-[var(--r-md)]"
+                                                        style={{
+                                                            background: 'var(--gain-dim)',
+                                                            border: '1px solid rgba(0,232,134,0.2)',
+                                                        }}
+                                                        transition={{ type: 'spring', stiffness: 480, damping: 38 }}
+                                                    />
+                                                )}
+                                                <item.icon size={16} className="relative z-10 shrink-0" aria-hidden />
+                                                {!collapsed && (
+                                                    <>
+                                                        <span className="relative z-10 truncate">{item.label}</span>
+                                                        {locked && (
+                                                            <Crown
+                                                                size={11}
+                                                                className="relative z-10 ml-auto shrink-0"
+                                                                style={{ color: 'var(--warn)' }}
+                                                                aria-label="Premium"
+                                                            />
+                                                        )}
+                                                    </>
+                                                )}
+                                            </>
+                                        )}
+                                    </NavLink>
+                                );
+                            })}
+                        </div>
+                    </div>
                 ))}
-              </div>
+            </nav>
+
+            {/* ─── Footer ─── */}
+            <div className="p-2 border-t border-[var(--line-subtle)] space-y-0.5 shrink-0">
+                {!isPremium && !collapsed && (
+                    <button
+                        onClick={() => setPricing(true)}
+                        className="w-full text-left p-3 mb-1 rounded-[var(--r-md)] surface-interactive"
+                        style={{ background: 'var(--warn-dim)', border: '1px solid rgba(255,176,32,0.2)' }}
+                    >
+                        <div className="flex items-center gap-2 mb-1">
+                            <Crown size={13} style={{ color: 'var(--warn)' }} />
+                            <span className="text-[12px] font-semibold" style={{ color: 'var(--warn)' }}>
+                                Go Premium
+                            </span>
+                        </div>
+                        <p className="text-[10.5px] text-lo leading-snug">
+                            AI Coach, Learning Hub and Quarterly Pulse
+                        </p>
+                    </button>
+                )}
+
+                <NavLink
+                    to="/dashboard/profile"
+                    onClick={() => setMobileOpen(false)}
+                    className={({ isActive }) =>
+                        cn(
+                            'flex items-center gap-2.5 rounded-[var(--r-md)] px-3 py-2 text-[13px] font-medium transition-colors',
+                            collapsed && 'justify-center px-0',
+                            isActive ? 'text-[var(--accent)] bg-[var(--gain-dim)]' : 'text-lo hover:text-hi hover:bg-[var(--surface-2)]'
+                        )
+                    }
+                >
+                    <User size={16} className="shrink-0" aria-hidden />
+                    {!collapsed && <span>Profile</span>}
+                </NavLink>
+
+                <button
+                    onClick={handleLogout}
+                    className={cn(
+                        'w-full flex items-center gap-2.5 rounded-[var(--r-md)] px-3 py-2',
+                        'text-[13px] font-medium text-lo hover:text-hi',
+                        'hover:bg-[var(--surface-2)] transition-colors',
+                        collapsed && 'justify-center px-0'
+                    )}
+                >
+                    <LogOut size={16} className="shrink-0" aria-hidden />
+                    {!collapsed && <span>Log out</span>}
+                </button>
             </div>
-            <div className="px-6 pb-6 flex gap-3">
-              <button onClick={() => setShowPricingPopup(false)} className="flex-1 glass-button-secondary py-3 rounded-xl text-sm font-semibold">Cancel</button>
-              <button onClick={handleActivatePremium} className="flex-1 py-3 rounded-xl text-sm font-bold text-black transition-all hover:scale-[1.02]" style={{ background: selectedPlan === 'yearly' ? 'linear-gradient(135deg, #ffaa00, #ff6600)' : 'linear-gradient(135deg, #00ff88, #00c8ff)', boxShadow: selectedPlan === 'yearly' ? '0 0 15px rgba(255,170,0,0.3)' : '0 0 15px rgba(0,255,136,0.3)' }}>Continue — {selectedPlan === 'yearly' ? '₹4,999/yr' : '₹499/mo'}</button>
+        </>
+    );
+
+    return (
+        <div className="h-screen flex overflow-hidden" data-bg={bgIntensity}>
+            <MarketBackground intensity={bgIntensity} />
+
+            {/* ─── Desktop rail ─── */}
+            <aside
+                className="hidden lg:flex flex-col shrink-0 transition-[width] duration-300 ease-smooth"
+                style={{
+                    width: collapsed ? 'var(--rail-w-collapsed)' : 'var(--rail-w)',
+                    background: bgIntensity === 'vivid' ? 'rgba(10,13,22,0.72)' : 'var(--bg-base)',
+                    backdropFilter: bgIntensity === 'vivid' ? 'blur(18px)' : undefined,
+                    borderRight: '1px solid var(--line-subtle)',
+                }}
+            >
+                {rail}
+            </aside>
+
+            {/* ─── Mobile drawer ─── */}
+            <AnimatePresence>
+                {mobileOpen && (
+                    <>
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setMobileOpen(false)}
+                            className="lg:hidden fixed inset-0 z-40"
+                            style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(2px)' }}
+                        />
+                        <motion.aside
+                            initial={{ x: -280 }}
+                            animate={{ x: 0 }}
+                            exit={{ x: -280 }}
+                            transition={{ type: 'spring', stiffness: 420, damping: 40 }}
+                            className="lg:hidden fixed inset-y-0 left-0 z-50 flex flex-col"
+                            style={{
+                                width: 'var(--rail-w)',
+                                background: 'var(--bg-base)',
+                                borderRight: '1px solid var(--line)',
+                            }}
+                        >
+                            {rail}
+                        </motion.aside>
+                    </>
+                )}
+            </AnimatePresence>
+
+            {/* ─── Main ─── */}
+            <div className="flex-1 flex flex-col min-w-0">
+                <div
+                    className="h-12 flex items-center gap-2 px-3 shrink-0"
+                    style={{
+                        borderBottom: '1px solid var(--line-subtle)',
+                        background: bgIntensity === 'vivid' ? 'rgba(10,13,22,0.62)' : 'var(--bg-base)',
+                        backdropFilter: bgIntensity === 'vivid' ? 'blur(18px)' : undefined,
+                    }}
+                >
+                    <button
+                        onClick={() => setMobileOpen(true)}
+                        className="lg:hidden btn btn-ghost !px-2 !py-1.5"
+                        aria-label="Open navigation"
+                    >
+                        <Menu size={17} />
+                    </button>
+                    <button
+                        onClick={() => setCollapsed((c) => !c)}
+                        className="hidden lg:flex btn btn-ghost !px-2 !py-1.5"
+                        aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                    >
+                        {collapsed ? <PanelLeft size={17} /> : <PanelLeftClose size={17} />}
+                    </button>
+
+                    <div className="ml-auto flex items-center gap-3">
+                        <span className="hidden md:flex items-center gap-1.5 text-[11px] text-faint">
+                            <span className="live-dot" aria-hidden />
+                            Live · prices update every 3s
+                        </span>
+
+                        {/* Background intensity. The tape is driven by the live
+                            feed, so this is genuinely a display preference —
+                            not a decoration toggle. */}
+                        <div
+                            className="hidden sm:flex items-center gap-0.5 p-0.5 rounded-[var(--r-sm)]"
+                            style={{ background: 'var(--surface-3)', border: '1px solid var(--line-subtle)' }}
+                            role="group"
+                            aria-label="Market tape intensity"
+                        >
+                            <Activity size={12} className="mx-1.5 text-faint" aria-hidden />
+                            {(['off', 'subtle', 'vivid'] as const).map((lvl) => (
+                                <button
+                                    key={lvl}
+                                    onClick={() => setBgIntensity(lvl)}
+                                    aria-pressed={bgIntensity === lvl}
+                                    className="px-2 py-0.5 rounded-[6px] text-[10.5px] font-semibold capitalize transition-colors"
+                                    style={
+                                        bgIntensity === lvl
+                                            ? { background: 'var(--accent)', color: 'var(--accent-ink)' }
+                                            : { color: 'var(--text-faint)' }
+                                    }
+                                >
+                                    {lvl}
+                                </button>
+                            ))}
+                        </div>
+                        {isPremium && (
+                            <span
+                                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10.5px] font-semibold"
+                                style={{ color: 'var(--warn)', background: 'var(--warn-dim)', border: '1px solid rgba(255,176,32,0.22)' }}
+                            >
+                                <Crown size={10} /> Premium
+                            </span>
+                        )}
+                    </div>
+                </div>
+
+                <main className="flex-1 overflow-y-auto overflow-x-hidden min-w-0">
+                    <AnimatePresence mode="wait">
+                        <PageTransition key={location.pathname}>
+                            <div className="px-4 sm:px-6 lg:px-8 py-6 max-w-page mx-auto min-w-0">
+                                <Outlet />
+                            </div>
+                        </PageTransition>
+                    </AnimatePresence>
+                </main>
             </div>
-          </div>
+
+            <PricingModal open={pricing} onClose={() => setPricing(false)} />
         </div>
-      )}
-      {activatedMsg && <div className="fixed bottom-8 right-8 px-6 py-4 rounded-xl text-sm text-black font-bold bg-gradient-to-r from-[#ffaa00] to-[#ff6600] z-50" style={{ boxShadow: '0 0 15px rgba(255,170,0,0.3)' }}>✓ Premium {selectedPlan === 'yearly' ? 'Yearly' : 'Monthly'} Plan Activated!</div>}
-    </div>
-  );
+    );
 }

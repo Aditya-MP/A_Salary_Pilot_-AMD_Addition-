@@ -1,142 +1,375 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+    Wallet, Sparkles, SlidersHorizontal, ArrowRight, Shield,
+    TrendingUp, Info, Lock, CalendarClock,
+} from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
-import { DollarSign, Sparkles, Sliders, Shield, TrendingUp, Coins, Wallet, ArrowRight } from 'lucide-react';
+import { useFinancials } from '../hooks/useFinancials';
+import { PageHeader } from '../components/primitives/PageHeader';
+import { Card, CardHead, CardBody } from '../components/primitives/Card';
+import { Badge } from '../components/primitives/Badge';
+import { Segmented } from '../components/primitives/Segmented';
+import { StackedMeter } from '../components/primitives/Meter';
+import { money, share, relativeDays } from '../lib/format';
+import type { RiskType } from '../domain/types';
+
+/* ═══════════════════════════════════════════════════════════════════
+   Salary Routing.
+
+   The old page asked for a salary figure and then split it into
+   needs / wants / investments with three sliders. The problem: those
+   three buckets are a textbook abstraction, and no salaried person's
+   money actually works that way. Rent and an EMI are not "needs" in
+   the same sense that groceries are — one is a fixed contractual
+   obligation you cannot flex, the other you can.
+
+   So the split now runs against the real expense list, and the only
+   genuinely free variable — how much gets swept into investments on
+   payday — is the one thing you actually control. The rest is shown
+   as what it is: already spoken for.
+   ═══════════════════════════════════════════════════════════════════ */
+
+const PRESETS: Record<RiskType, { investPct: number; label: string; blurb: string; color: string }> = {
+    conservative: {
+        investPct: 12,
+        label: 'Conservative',
+        blurb: 'Buffer first. Slower growth, far fewer bad months.',
+        color: 'var(--info)',
+    },
+    balanced: {
+        investPct: 20,
+        label: 'Balanced',
+        blurb: 'The rate most people can actually sustain for years.',
+        color: 'var(--accent)',
+    },
+    aggressive: {
+        investPct: 32,
+        label: 'Aggressive',
+        blurb: 'Fast, and it only works if your runway is already safe.',
+        color: 'var(--warn)',
+    },
+};
 
 export default function SalarySplitting() {
-  const { salary, risk, split, setSplit, setSalary, setRisk } = useAppStore();
-  const navigate = useNavigate();
-  const [mode, setMode] = useState<'ai' | 'manual'>('ai');
-  const [localSalary, setLocalSalary] = useState(salary || 100000);
+    const navigate = useNavigate();
+    const { profile, runway, payday, score } = useFinancials();
 
-  const profiles: Record<string, { needs: number; wants: number; investments: number }> = {
-    conservative: { investments: 20, needs: 50, wants: 30 },
-    balanced: { investments: 35, needs: 35, wants: 30 },
-    aggressive: { investments: 50, needs: 25, wants: 25 },
-  };
-  const currentProfile = (risk && profiles[risk]) ? profiles[risk] : profiles.balanced;
+    const split = useAppStore((s) => s.split);
+    const setSplit = useAppStore((s) => s.setSplit);
+    const risk = useAppStore((s) => s.risk);
+    const setRisk = useAppStore((s) => s.setRisk);
+    const setSalary = useAppStore((s) => s.setSalary);
 
-  const handleApplyAI = () => { setSalary(localSalary); setSplit(currentProfile); navigate('/dashboard/triple-guard'); };
-  const handleManualChange = (key: 'investments' | 'needs' | 'wants', val: number) => {
-    const remainder = 100 - val; const half = Math.round(remainder / 2); const rest = remainder - half;
-    let newSplit = { ...split }; newSplit[key] = val;
-    if (key === 'investments') { newSplit.needs = half; newSplit.wants = rest; }
-    else if (key === 'needs') { newSplit.investments = half; newSplit.wants = rest; }
-    else { newSplit.investments = half; newSplit.needs = rest; }
-    setSplit(newSplit);
-  };
+    const [mode, setMode] = useState<'auto' | 'manual'>('auto');
+    const [salary, setLocalSalary] = useState(profile.income.inHand);
 
-  return (
-    <div className="p-6 lg:p-8 max-w-4xl mx-auto space-y-6">
-      <div className="rounded-2xl bg-gradient-to-r from-[#00ff88] via-[#00e077] to-[#00c8ff] p-6 lg:p-8" style={{ boxShadow: '0 0 30px rgba(0,255,136,0.2), 0 4px 20px rgba(0,0,0,0.3)' }}>
-        <div className="flex items-center gap-2 mb-1"><DollarSign className="text-black/60" size={16} /><span className="text-black/70 text-xs font-bold tracking-wider uppercase">AI Allocation</span></div>
-        <h1 className="text-2xl lg:text-3xl font-bold text-black">Salary Splitting</h1>
-        <p className="text-black/60 mt-1 text-sm font-medium">Optimize your income distribution</p>
-      </div>
+    const committed = payday.slices
+        .filter((s) => s.kind === 'locked')
+        .reduce((s, x) => s + x.amount, 0);
 
-      <div className="neon-card overflow-hidden">
-        <div className="px-6 py-4 border-b border-[#ffaa00]/15 flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-[#ffaa00]/10 flex items-center justify-center border border-[#ffaa00]/20"><Wallet className="text-[#ffaa00]" size={14} /></div>
-          <h2 className="text-white font-semibold">Monthly Salary</h2>
-        </div>
-        <div className="p-6">
-          <input type="number" value={localSalary} onChange={(e) => setLocalSalary(Number(e.target.value))}
-            className="w-full bg-white/[0.04] border border-[#00ff88]/20 rounded-xl px-4 py-3 text-white text-lg font-semibold focus:outline-none focus:border-[#00ff88]/50 focus:ring-2 focus:ring-[#00ff88]/20 placeholder-slate-600 transition-all" placeholder="Enter salary" />
-        </div>
-      </div>
+    const maxInvestable = Math.max(0, salary - committed);
+    const maxPct = salary > 0 ? Math.floor((maxInvestable / salary) * 100) : 0;
 
-      <div className="flex rounded-xl p-1 gap-1 bg-white/[0.03] border border-[#00ff88]/10">
-        <button onClick={() => setMode('ai')} className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-semibold text-sm transition-all duration-200 ${mode === 'ai' ? 'bg-[#00ff88]/10 text-[#00ff88] border border-[#00ff88]/20' : 'text-slate-500 hover:text-slate-300'}`} style={mode === 'ai' ? { boxShadow: '0 0 10px rgba(0,255,136,0.1)' } : {}}><Sparkles size={16} /> AI Mode</button>
-        <button onClick={() => setMode('manual')} className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-semibold text-sm transition-all duration-200 ${mode === 'manual' ? 'bg-[#ffaa00]/10 text-[#ffaa00] border border-[#ffaa00]/20' : 'text-slate-500 hover:text-slate-300'}`} style={mode === 'manual' ? { boxShadow: '0 0 10px rgba(255,170,0,0.1)' } : {}}><Sliders size={16} /> Manual</button>
-      </div>
+    const investPct = mode === 'auto' ? PRESETS[risk].investPct : split.investments;
+    const investAmount = Math.round((salary * investPct) / 100);
+    const overCommitted = investAmount > maxInvestable;
 
-      {mode === 'ai' ? (
-        <div className="space-y-4">
-          <div className="neon-card overflow-hidden">
-            <div className="px-6 py-4 border-b border-[#ff0080]/15 flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-[#ff0080]/10 flex items-center justify-center border border-[#ff0080]/20"><Shield className="text-[#ff0080]" size={14} /></div>
-              <h2 className="text-white font-semibold">Risk Profile: <span className="text-[#00ff88] capitalize" style={{ textShadow: '0 0 8px rgba(0,255,136,0.3)' }}>{risk}</span></h2>
-            </div>
-            <div className="p-5 grid grid-cols-3 gap-3">
-              {[
-                { k: 'conservative' as const, emoji: '🛡️', desc: 'Safety first', clr: '#00c8ff' },
-                { k: 'balanced' as const, emoji: '⚖️', desc: 'Best of both', clr: '#00ff88' },
-                { k: 'aggressive' as const, emoji: '⚡', desc: 'Max growth', clr: '#ff0080' },
-              ].map(p => (
-                <div key={p.k} onClick={() => setRisk(p.k)} className={`text-center p-4 rounded-xl border transition-all cursor-pointer ${risk === p.k ? '' : 'border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/10'}`}
-                  style={risk === p.k ? { borderColor: `${p.clr}40`, background: `${p.clr}10`, boxShadow: `0 0 15px ${p.clr}15` } : {}}>
-                  <div className="text-3xl mb-2">{p.emoji}</div>
-                  <p className="text-white font-semibold text-sm capitalize">{p.k}</p>
-                  <p className="text-[10px] text-slate-500 mt-0.5">{p.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
+    const apply = () => {
+        setSalary(salary);
+        setSplit({
+            investments: investPct,
+            needs: Math.round((committed / salary) * 100),
+            wants: Math.max(0, 100 - investPct - Math.round((committed / salary) * 100)),
+        });
+        navigate('/dashboard/triple-guard');
+    };
 
-          <div className="neon-card overflow-hidden">
-            <div className="px-6 py-4 border-b border-[#00ff88]/15 flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-[#00ff88]/10 flex items-center justify-center border border-[#00ff88]/20"><TrendingUp className="text-[#00ff88]" size={14} /></div>
-              <h2 className="text-white font-semibold">AI-Recommended Split</h2>
-            </div>
-            <div className="p-5 space-y-4">
-              {[
-                { label: 'Investments', value: currentProfile.investments, clr: '#00ff88', amount: localSalary * currentProfile.investments / 100 },
-                { label: 'Needs', value: currentProfile.needs, clr: '#ffaa00', amount: localSalary * currentProfile.needs / 100 },
-                { label: 'Wants', value: currentProfile.wants, clr: '#ff0080', amount: localSalary * currentProfile.wants / 100 },
-              ].map(b => (
-                <div key={b.label}>
-                  <div className="flex justify-between mb-1.5"><span className="text-sm text-slate-400 font-medium">{b.label}</span><span className="text-sm text-white font-bold">{b.value}% <span className="text-slate-500 font-normal">· ₹{b.amount.toLocaleString()}</span></span></div>
-                  <div className="h-3 bg-white/[0.04] rounded-full overflow-hidden"><div className="h-full rounded-full" style={{ width: `${b.value}%`, backgroundColor: b.clr, boxShadow: `0 0 8px ${b.clr}50` }} /></div>
-                </div>
-              ))}
-            </div>
-          </div>
+    /* Where the invested rupee should go, given the runway state. This
+       is the recommendation that most apps get backwards — they push
+       equity regardless of whether the user has a buffer. */
+    const bufferFirst = runway.months < runway.target;
+    const destinations = bufferFirst
+        ? [
+            { label: 'Liquid fund — emergency buffer', pct: 60, color: 'var(--accent)', note: 'until runway hits target' },
+            { label: 'Index equity SIP', pct: 25, color: 'var(--series-2)', note: 'long horizon' },
+            { label: 'ELSS — 80C', pct: 15, color: 'var(--series-4)', note: '3-year lock-in' },
+        ]
+        : [
+            { label: 'Index equity SIP', pct: 50, color: 'var(--series-2)', note: 'core growth' },
+            { label: 'ELSS — 80C', pct: 20, color: 'var(--series-4)', note: 'tax + growth' },
+            { label: 'NPS — 80CCD(1B)', pct: 15, color: 'var(--series-3)', note: 'extra ₹50k deduction' },
+            { label: 'Debt / gold', pct: 15, color: 'var(--series-6)', note: 'ballast' },
+        ];
 
-          <button onClick={handleApplyAI} className="w-full neon-button py-4 rounded-2xl text-sm flex items-center justify-center gap-2">Approve Investment → Triple Guard <ArrowRight size={16} /></button>
-        </div>
-      ) : (
+    return (
         <>
-          <div className="neon-card overflow-hidden">
-            <div className="px-6 py-4 border-b border-[#ffaa00]/15 flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-[#ffaa00]/10 flex items-center justify-center border border-[#ffaa00]/20"><Sliders className="text-[#ffaa00]" size={14} /></div>
-              <h2 className="text-white font-semibold">Manual Allocation</h2>
-            </div>
-            <div className="p-5 space-y-5">
-              {[
-                { key: 'investments' as const, label: 'Investments', clr: '#00ff88' },
-                { key: 'needs' as const, label: 'Needs', clr: '#ffaa00' },
-                { key: 'wants' as const, label: 'Wants', clr: '#ff0080' },
-              ].map(s => (
-                <div key={s.key}>
-                  <div className="flex justify-between mb-1.5"><span className="text-sm text-slate-400">{s.label}</span><span className="text-sm font-bold" style={{ color: s.clr }}>{split[s.key]}%</span></div>
-                  <input type="range" min="0" max="100" value={split[s.key]} onChange={(e) => handleManualChange(s.key, Number(e.target.value))} className="w-full h-2 rounded-lg appearance-none cursor-pointer bg-white/5" style={{ accentColor: s.clr }} />
-                </div>
-              ))}
-            </div>
-          </div>
-          <button onClick={handleApplyAI} className="w-full neon-button py-4 rounded-2xl text-sm flex items-center justify-center gap-2">Approve Investment → Triple Guard <ArrowRight size={16} /></button>
-        </>
-      )}
+            <PageHeader
+                eyebrow={`Payday ${relativeDays(payday.daysToPayday)}`}
+                title="Salary Routing"
+                description="Only one number here is genuinely yours to choose. The rest is already committed before the money lands."
+                metric={{
+                    label: 'Free to allocate',
+                    value: money(maxInvestable),
+                    delta: `${share(maxPct)} of in-hand`,
+                    up: true,
+                }}
+            />
 
-      <div className="neon-card overflow-hidden">
-        <div className="px-6 py-4 border-b border-[#00c8ff]/15 flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-[#00c8ff]/10 flex items-center justify-center border border-[#00c8ff]/20"><Coins className="text-[#00c8ff]" size={14} /></div>
-          <h2 className="text-white font-semibold">Where Your Money Goes</h2>
-        </div>
-        <div className="p-4 grid grid-cols-3 gap-3">
-          {[
-            { name: 'Equities', emoji: '📈', value: `₹${(localSalary * (split.investments || 0) / 100 * 0.4).toFixed(0)}`, clr: '#00ff88' },
-            { name: 'Crypto', emoji: '₿', value: `₹${(localSalary * (split.investments || 0) / 100 * 0.25).toFixed(0)}`, clr: '#ffaa00' },
-            { name: 'ESG', emoji: '🌱', value: `₹${(localSalary * (split.investments || 0) / 100 * 0.2).toFixed(0)}`, clr: '#00c8ff' },
-          ].map(a => (
-            <div key={a.name} className="rounded-xl p-4 text-center border transition-all hover:scale-[1.02]" style={{ borderColor: `${a.clr}25`, background: `${a.clr}08`, boxShadow: `0 0 10px ${a.clr}08` }}>
-              <div className="text-2xl mb-2">{a.emoji}</div>
-              <p className="font-bold text-sm text-white">{a.name}</p>
-              <p className="text-xs mt-1 font-semibold" style={{ color: a.clr }}>{a.value}</p>
+            <div className="grid lg:grid-cols-[1fr_360px] gap-5 items-start">
+                <div className="space-y-5">
+                    {/* ─── Salary ─── */}
+                    <Card>
+                        <CardHead icon={Wallet} title="Monthly in-hand" subtitle="After tax and EPF — what actually reaches the bank" />
+                        <CardBody>
+                            <div className="relative">
+                                <span className="absolute left-4 top-1/2 -translate-y-1/2 num text-lo text-[15px]">₹</span>
+                                <input
+                                    type="number"
+                                    value={salary}
+                                    onChange={(e) => setLocalSalary(Math.max(0, Number(e.target.value)))}
+                                    className="field num !text-lg !font-semibold !py-3.5 !pl-9"
+                                    aria-label="Monthly in-hand salary"
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-px mt-4 rounded-[var(--r-md)] overflow-hidden"
+                                style={{ background: 'var(--line-subtle)' }}>
+                                {[
+                                    { l: 'Committed', v: money(committed), t: 'var(--loss)', n: 'rent, EMIs, essentials' },
+                                    { l: 'Free', v: money(maxInvestable), t: 'var(--gain)', n: 'yours to route' },
+                                    { l: 'Employer EPF', v: money(profile.income.epfEmployer), t: 'var(--text-lo)', n: 'invisible but real' },
+                                ].map((s) => (
+                                    <div key={s.l} className="p-3" style={{ background: 'var(--surface-1)' }}>
+                                        <p className="label mb-1">{s.l}</p>
+                                        <p className="num text-[15px] font-semibold" style={{ color: s.t }}>{s.v}</p>
+                                        <p className="text-[10px] text-faint mt-0.5">{s.n}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </CardBody>
+                    </Card>
+
+                    {/* ─── Mode ─── */}
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <Segmented<'auto' | 'manual'>
+                            value={mode}
+                            onChange={setMode}
+                            options={[
+                                { value: 'auto', label: 'Recommended', icon: Sparkles },
+                                { value: 'manual', label: 'Manual', icon: SlidersHorizontal },
+                            ]}
+                        />
+                        {overCommitted && (
+                            <Badge tone="loss" icon={Info}>
+                                Exceeds what is actually free
+                            </Badge>
+                        )}
+                    </div>
+
+                    {/* ─── Rate ─── */}
+                    {mode === 'auto' ? (
+                        <Card>
+                            <CardHead icon={Shield} title="Choose a pace" subtitle="This sets how much of each salary is swept out on payday" />
+                            <CardBody className="grid sm:grid-cols-3 gap-3">
+                                {(Object.keys(PRESETS) as RiskType[]).map((k) => {
+                                    const p = PRESETS[k];
+                                    const active = risk === k;
+                                    return (
+                                        <button
+                                            key={k}
+                                            onClick={() => setRisk(k)}
+                                            className="text-left p-4 rounded-[var(--r-md)] transition-all duration-200"
+                                            style={{
+                                                background: active ? 'var(--surface-2)' : 'var(--surface-3)',
+                                                border: `1px solid ${active ? p.color : 'var(--line-subtle)'}`,
+                                            }}
+                                        >
+                                            <div className="flex items-center justify-between mb-2">
+                                                <span className="text-[13px] font-semibold text-hi">{p.label}</span>
+                                                {active && (
+                                                    <span className="w-2 h-2 rounded-full" style={{ background: p.color }} />
+                                                )}
+                                            </div>
+                                            <p className="num text-xl font-semibold" style={{ color: p.color }}>
+                                                {p.investPct}%
+                                            </p>
+                                            <p className="num text-[11px] text-faint mt-0.5">
+                                                {money(Math.round((salary * p.investPct) / 100))}/mo
+                                            </p>
+                                            <p className="text-[11px] text-lo mt-2 leading-snug">{p.blurb}</p>
+                                        </button>
+                                    );
+                                })}
+                            </CardBody>
+                        </Card>
+                    ) : (
+                        <Card>
+                            <CardHead icon={SlidersHorizontal} title="Set it yourself" subtitle="Capped at what is genuinely uncommitted" />
+                            <CardBody>
+                                <div className="flex items-baseline justify-between mb-3">
+                                    <span className="text-[13px] text-lo">Invested each payday</span>
+                                    <div className="text-right">
+                                        <span className="num text-2xl font-semibold text-hi">{investPct}%</span>
+                                        <span className="num text-[13px] text-lo ml-2">
+                                            {money(investAmount)}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <input
+                                    type="range"
+                                    min={0}
+                                    max={60}
+                                    value={investPct}
+                                    onChange={(e) =>
+                                        setSplit({ ...split, investments: Number(e.target.value) })
+                                    }
+                                    className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
+                                    style={{
+                                        accentColor: overCommitted ? 'var(--loss)' : 'var(--accent)',
+                                        background: 'var(--surface-3)',
+                                    }}
+                                    aria-label="Percentage of salary invested"
+                                />
+
+                                <div className="flex justify-between mt-2">
+                                    <span className="text-[10.5px] text-faint">0%</span>
+                                    <span className="text-[10.5px] text-faint">
+                                        {maxPct}% is all that is actually free
+                                    </span>
+                                    <span className="text-[10.5px] text-faint">60%</span>
+                                </div>
+
+                                {overCommitted && (
+                                    <div
+                                        className="mt-4 p-3 rounded-[var(--r-md)] flex items-start gap-2.5"
+                                        style={{ background: 'var(--loss-dim)', border: '1px solid rgba(255,77,109,0.22)' }}
+                                    >
+                                        <Info size={14} className="mt-0.5 shrink-0" style={{ color: 'var(--loss)' }} />
+                                        <p className="text-[12px] text-mid leading-relaxed">
+                                            At {investPct}% you would be routing{' '}
+                                            <span className="num font-semibold">{money(investAmount - maxInvestable)}</span>{' '}
+                                            more than is left after your committed spending. In practice that
+                                            means the shortfall lands on a credit card at 42%, which costs more
+                                            than the investment earns.
+                                        </p>
+                                    </div>
+                                )}
+                            </CardBody>
+                        </Card>
+                    )}
+
+                    {/* ─── Where it goes ─── */}
+                    <Card>
+                        <CardHead
+                            icon={TrendingUp}
+                            title="Where the invested rupee goes"
+                            subtitle={bufferFirst ? 'Buffer-first, because your runway is below target' : 'Growth-first, your buffer is already safe'}
+                            accent={bufferFirst ? 'var(--warn)' : 'var(--accent)'}
+                        />
+                        <CardBody>
+                            <StackedMeter
+                                segments={destinations.map((d) => ({
+                                    label: d.label,
+                                    value: d.pct,
+                                    color: d.color,
+                                }))}
+                                height={11}
+                                className="mb-4"
+                            />
+                            <div className="space-y-2.5">
+                                {destinations.map((d) => (
+                                    <div key={d.label} className="flex items-center gap-2.5">
+                                        <span className="w-2 h-2 rounded-full shrink-0" style={{ background: d.color }} />
+                                        <span className="text-[12.5px] text-hi flex-1 min-w-0 truncate">{d.label}</span>
+                                        <span className="text-[11px] text-faint shrink-0">{d.note}</span>
+                                        <span className="num text-[12.5px] font-semibold text-hi shrink-0 w-20 text-right">
+                                            {money(Math.round((investAmount * d.pct) / 100))}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {bufferFirst && (
+                                <div
+                                    className="mt-4 p-3.5 rounded-[var(--r-md)] flex items-start gap-2.5"
+                                    style={{ background: 'var(--warn-dim)', border: '1px solid rgba(255,176,32,0.2)' }}
+                                >
+                                    <Lock size={14} className="mt-0.5 shrink-0" style={{ color: 'var(--warn)' }} />
+                                    <p className="text-[12px] text-mid leading-relaxed">
+                                        Your runway is {runway.months.toFixed(1)} months against a{' '}
+                                        {runway.target.toFixed(0)}-month target, so most of this goes somewhere
+                                        you can actually reach. Once the buffer is full this flips to
+                                        growth-first automatically.
+                                    </p>
+                                </div>
+                            )}
+                        </CardBody>
+                    </Card>
+                </div>
+
+                {/* ─── Sticky summary ─── */}
+                <div className="lg:sticky lg:top-4 space-y-4">
+                    <Card>
+                        <CardHead icon={CalendarClock} title="Next payday" subtitle={`${money(salary)} lands ${relativeDays(payday.daysToPayday)}`} accent="var(--info)" />
+                        <CardBody>
+                            <StackedMeter
+                                segments={payday.slices.map((s) => ({
+                                    label: s.label,
+                                    value: s.amount,
+                                    color: s.color,
+                                }))}
+                                height={11}
+                                className="mb-4"
+                            />
+                            <div className="space-y-2">
+                                {payday.slices.map((s) => (
+                                    <div key={s.label} className="flex items-center gap-2.5">
+                                        <span className="w-2 h-2 rounded-full shrink-0" style={{ background: s.color }} />
+                                        <span className="text-[12px] text-lo flex-1">{s.label}</span>
+                                        <span className="num text-[12px] font-semibold text-hi">
+                                            {money(s.amount)}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div
+                                className="mt-4 pt-4 space-y-2"
+                                style={{ borderTop: '1px solid var(--line-subtle)' }}
+                            >
+                                <Row label="Savings rate" value={share(score.savingsRate * 100)} />
+                                <Row label="Runway after this" value={`${runway.months.toFixed(1)} mo`} />
+                                <Row
+                                    label="Freedom at"
+                                    value={score.yearsToFreedom >= 70 ? '—' : `age ${Math.round(score.freedomAge)}`}
+                                />
+                            </div>
+
+                            <button
+                                onClick={apply}
+                                disabled={overCommitted}
+                                className="btn btn-primary w-full mt-5"
+                            >
+                                Approve routing <ArrowRight size={15} />
+                            </button>
+                            <p className="text-[10.5px] text-faint text-center mt-2">
+                                Runs through Triple Guard before anything executes
+                            </p>
+                        </CardBody>
+                    </Card>
+                </div>
             </div>
-          ))}
+        </>
+    );
+}
+
+function Row({ label, value }: { label: string; value: string }) {
+    return (
+        <div className="flex justify-between items-baseline">
+            <span className="text-[12px] text-lo">{label}</span>
+            <span className="num text-[12.5px] font-semibold text-hi">{value}</span>
         </div>
-      </div>
-    </div>
-  );
+    );
 }
