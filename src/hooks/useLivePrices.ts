@@ -1,79 +1,127 @@
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
+import { seedProfile } from '../domain/seed';
 
-interface PriceData {
-  equity: number;
-  crypto: number;
-  esg: number;
-  gold: number;
-  btc: number;
-  eth: number;
-  sp500: number;
-  nasdaq: number;
+/* ═══════════════════════════════════════════════════════════════════
+   Live price feed — one ticker for the whole app.
+
+   Three real bugs in the previous version, all fixed here:
+
+   1. Every page called useLivePrices() separately, so each mounted its
+      own interval with its own random walk. Dashboard and Portfolio
+      would show different prices for the same holding at the same
+      moment — the fastest way to destroy trust in a finance app.
+
+   2. `setChanges` was called from inside the `setPrices` updater. React
+      state updaters must be pure; under StrictMode that fires twice and
+      double-steps the walk.
+
+   3. The effect closed over `changes` with a `[]` dependency array, so
+      it read a permanently stale value.
+
+   This is a single module-level store driven by one interval, consumed
+   through useSyncExternalStore. Every subscriber sees identical prices.
+   ═══════════════════════════════════════════════════════════════════ */
+
+export interface PriceSnapshot {
+    /** ticker → current price */
+    price: Record<string, number>;
+    /** ticker → % change from session open */
+    change: Record<string, number>;
+    /** Market-wide index level, for the ticker strip. */
+    nifty: number;
+    niftyChange: number;
+    updatedAt: number;
 }
 
-export const BASE_PRICES: PriceData = {
-  equity: 100,
-  crypto: 50000,
-  esg: 100,
-  gold: 2000,
-  btc: 43250,
-  eth: 2280,
-  sp500: 4800,
-  nasdaq: 15200,
+/* Per-asset-class daily volatility, roughly calibrated to reality.
+   Crypto genuinely does move ~40x more than a liquid fund; using one
+   volatility for everything made the old feed look fake. */
+const VOL: Record<string, number> = {
+    equity: 0.0035,
+    esg: 0.003,
+    debt: 0.0004,
+    gold: 0.0018,
+    crypto: 0.014,
+    cash: 0.0001,
+    retirement: 0.0002,
 };
 
-const VOLATILITY: Record<keyof PriceData, number> = {
-  equity: 0.002,
-  crypto: 0.008,
-  esg: 0.001,
-  gold: 0.001,
-  btc: 0.01,
-  eth: 0.012,
-  sp500: 0.0015,
-  nasdaq: 0.002,
+const OPEN: Record<string, number> = {};
+const CLASS_OF: Record<string, string> = {};
+
+seedProfile.holdings.forEach((h) => {
+    OPEN[h.ticker] = h.price;
+    CLASS_OF[h.ticker] = h.assetClass;
+});
+
+let snapshot: PriceSnapshot = {
+    price: { ...OPEN },
+    change: Object.fromEntries(Object.keys(OPEN).map((k) => [k, 0])),
+    nifty: 24_812,
+    niftyChange: 0,
+    updatedAt: Date.now(),
 };
 
-export function useLivePrices() {
-  const [prices, setPrices] = useState<PriceData>(BASE_PRICES);
-  const [changes, setChanges] = useState<Record<keyof PriceData, number>>({
-    equity: 0,
-    crypto: 0,
-    esg: 0,
-    gold: 0,
-    btc: 0,
-    eth: 0,
-    sp500: 0,
-    nasdaq: 0,
-  });
+const listeners = new Set<() => void>();
+let timer: ReturnType<typeof setInterval> | null = null;
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setPrices((prev) => {
-        const newPrices = { ...prev };
-        const newChanges = { ...changes };
+function tick() {
+    const price: Record<string, number> = {};
+    const change: Record<string, number> = {};
 
-        (Object.keys(prev) as Array<keyof PriceData>).forEach((key) => {
-          const volatility = VOLATILITY[key];
-          const change = (Math.random() - 0.5) * 2 * volatility;
-          newPrices[key] = prev[key] * (1 + change);
-          newChanges[key] = ((newPrices[key] - BASE_PRICES[key]) / BASE_PRICES[key]) * 100;
-        });
+    // A shared market factor so holdings move together the way real
+    // markets do, plus idiosyncratic noise per instrument. Independent
+    // random walks look wrong to anyone who has watched a real portfolio.
+    const market = (Math.random() - 0.5) * 0.004;
 
-        setChanges(newChanges);
-        return newPrices;
-      });
-    }, 2000);
+    for (const ticker of Object.keys(OPEN)) {
+        const vol = VOL[CLASS_OF[ticker]] ?? 0.003;
+        const beta = CLASS_OF[ticker] === 'crypto' ? 0.3 : 0.75;
+        const drift = market * beta + (Math.random() - 0.5) * 2 * vol;
 
-    return () => clearInterval(interval);
-  }, []);
+        const next = snapshot.price[ticker] * (1 + drift);
+        price[ticker] = next;
+        change[ticker] = ((next - OPEN[ticker]) / OPEN[ticker]) * 100;
+    }
 
-  return { prices, changes };
+    const nifty = snapshot.nifty * (1 + market);
+
+    snapshot = {
+        price,
+        change,
+        nifty,
+        niftyChange: ((nifty - 24_812) / 24_812) * 100,
+        updatedAt: Date.now(),
+    };
+
+    listeners.forEach((l) => l());
 }
 
-export function calculatePortfolioValue(holdings: { equity: number; crypto: number; esg: number }, prices: PriceData) {
-  return (
-    (holdings.equity / BASE_PRICES.equity) * prices.equity +
-    (holdings.crypto / BASE_PRICES.crypto) * prices.crypto +
-    (holdings.esg / BASE_PRICES.esg) * prices.esg
-  );
+function subscribe(listener: () => void) {
+    listeners.add(listener);
+    if (!timer) timer = setInterval(tick, 3_000);
+
+    return () => {
+        listeners.delete(listener);
+        // Stop the clock when nothing is watching — no background work
+        // on a page the user has navigated away from.
+        if (listeners.size === 0 && timer) {
+            clearInterval(timer);
+            timer = null;
+        }
+    };
+}
+
+const getSnapshot = () => snapshot;
+
+export function useLivePrices(): PriceSnapshot {
+    return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+}
+
+/** Prices merged onto a holdings array — the usual consumer shape. */
+export function priceHoldings<T extends { ticker: string; price: number }>(
+    holdings: T[],
+    snap: PriceSnapshot
+): T[] {
+    return holdings.map((h) => ({ ...h, price: snap.price[h.ticker] ?? h.price }));
 }
