@@ -1,0 +1,42 @@
+{
+  "model": "m2_recurring",
+  "evaluated_at": "2026-08-26T11:04:07",
+  "seeds": [
+    7,
+    11,
+    23,
+    42,
+    101
+  ],
+  "detector": {
+    "precision": 0.7,
+    "recall": 0.13562271062271064,
+    "f1": 0.22111111111111112
+  },
+  "baseline_frequency": {
+    "precision": 0.12054378793509228,
+    "recall": 0.23930097680097678,
+    "f1": 0.15764234886186107
+  },
+  "paired_delta_f1": 0.06346876224925005,
+  "monthly_period_median_error_pct": 3.088042049934301,
+  "boundary_utilities_flagged": "1/38",
+  "false_positives": [
+    "HP PETROL PUMP (transport)",
+    "NPS CONTRIBUTION (investment)"
+  ],
+  "false_negatives": [
+    "ADOBE CREATIVE CLOUD (subscriptions)",
+    "BAJAJ FINSERV EMI (debt)",
+    "CULT FIT (subscriptions)",
+    "GOOGLE ONE (subscriptions)",
+    "HOTSTAR (subscriptions)",
+    "ICICI PERSONAL LOAN (debt)",
+    "NETFLIX (subscriptions)",
+    "SBI EDUCATION LOAN (debt)",
+    "SPOTIFY (subscriptions)",
+    "URBAN COMPANY (housing)",
+    "YOUTUBE PREMIUM (subscriptions)"
+  ],
+  "verdict": "tune"
+}

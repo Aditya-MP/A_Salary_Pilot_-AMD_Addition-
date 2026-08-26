@@ -1,0 +1,85 @@
+{
+  "trained_at": "2026-08-26T11:03:55",
+  "hyperparameters": {
+    "lr": 0.6,
+    "epochs": 30,
+    "batch_size": 256,
+    "l2": 1e-05,
+    "class_weight": "balanced",
+    "seed": 0
+  },
+  "seeds": [
+    7,
+    11,
+    23,
+    42,
+    101,
+    202,
+    303
+  ],
+  "n_unseen_total": 829,
+  "arms": {
+    "v1": {
+      "seen_macro_f1": 0.978380395581102,
+      "unseen_macro_f1": 0.28286279349287763,
+      "unseen_accuracy": 0.2681848258026345
+    },
+    "v0": {
+      "seen_macro_f1": 0.45636747327338795,
+      "unseen_macro_f1": 0.36658539220134223,
+      "unseen_accuracy": 0.36751319310337666
+    },
+    "v2": {
+      "seen_macro_f1": 0.9311698508757418,
+      "unseen_macro_f1": 0.435265194104653,
+      "unseen_accuracy": 0.47773807113773464
+    }
+  },
+  "paired_delta_unseen_macro_f1": {
+    "mean": 0.1524024006117753,
+    "std": 0.05274940375895177,
+    "wins": 7,
+    "of": 7
+  },
+  "paired_delta_unseen_accuracy": {
+    "mean": 0.20955324533510017,
+    "std": 0.09189365309052937
+  },
+  "paired_delta_seen_macro_f1": {
+    "mean": -0.04721054470536036
+  },
+  "unseen_ece": {
+    "v1": 0.42848114281997657,
+    "v2": 0.31086856314697725
+  },
+  "verdict": "ship",
+  "behavioural_features": [
+    "log_amount",
+    "is_round_100",
+    "is_round_500",
+    "is_round_1000",
+    "trailing_zeros",
+    "channel_upi",
+    "channel_card",
+    "channel_neft",
+    "channel_ach",
+    "channel_netbanking",
+    "channel_atm",
+    "channel_internal",
+    "is_credit",
+    "dom_sin",
+    "dom_cos",
+    "is_month_start",
+    "is_weekend",
+    "amt_bucket_50",
+    "amt_bucket_150",
+    "amt_bucket_400",
+    "amt_bucket_1000",
+    "amt_bucket_2500",
+    "amt_bucket_6000",
+    "amt_bucket_15000",
+    "amt_bucket_40000",
+    "amt_bucket_100000",
+    "amt_over_max"
+  ]
+}

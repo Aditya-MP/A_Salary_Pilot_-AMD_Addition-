@@ -1,0 +1,45 @@
+{
+  "model": "m7_bandit",
+  "evaluated_at": "2026-08-26T11:13:01",
+  "n_arms": 14,
+  "context_dim": 8,
+  "rounds": 20000,
+  "seeds": [
+    7,
+    11,
+    23,
+    42,
+    101
+  ],
+  "oracle_reward_rate": 0.6062517006103221,
+  "policies": {
+    "random": {
+      "final_regret": 1979.0102874560434,
+      "reward_rate": 0.5063199999999999,
+      "pct_of_oracle": 83.51646675634566
+    },
+    "fixed heuristic": {
+      "final_regret": 941.3439319721954,
+      "reward_rate": 0.5579700000000001,
+      "pct_of_oracle": 92.03603048672421
+    },
+    "epsilon-greedy": {
+      "final_regret": 619.4236803352517,
+      "reward_rate": 0.57453,
+      "pct_of_oracle": 94.76756921615439
+    },
+    "LinUCB": {
+      "final_regret": 592.1730491390716,
+      "reward_rate": 0.57606,
+      "pct_of_oracle": 95.01993964224305
+    },
+    "Thompson": {
+      "final_regret": 502.26934884652894,
+      "reward_rate": 0.5837899999999999,
+      "pct_of_oracle": 96.29498761195892
+    }
+  },
+  "best_learner": "Thompson",
+  "crossover_round": 4296,
+  "verdict": "ship-Thompson-after-warmup"
+}

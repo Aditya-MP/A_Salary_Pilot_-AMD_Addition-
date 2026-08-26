@@ -1,0 +1,68 @@
+{
+  "model": "m5_portfolio",
+  "evaluated_at": "2026-08-26T11:11:32",
+  "assets": [
+    "equity_large",
+    "equity_flexi",
+    "debt",
+    "gold",
+    "esg",
+    "crypto"
+  ],
+  "train_days": 500,
+  "hold_days": 63,
+  "seeds": [
+    7,
+    11,
+    23
+  ],
+  "shrinkage_intensity": 0.009151426414500922,
+  "strategies": {
+    "1/N equal weight": {
+      "return": 0.049829527309783815,
+      "vol": 0.18028549393365734,
+      "sharpe": 0.27544187864421277,
+      "max_drawdown": -0.3467604505905398,
+      "turnover": 0.0
+    },
+    "min-var uncapped": {
+      "return": 0.03260822584969973,
+      "vol": 0.040376425524220556,
+      "sharpe": 0.8064331892763944,
+      "max_drawdown": -0.05217389712128192,
+      "turnover": 0.010647304118471632
+    },
+    "min-var (sample cov)": {
+      "return": 0.03015360426230615,
+      "vol": 0.08311154384818474,
+      "sharpe": 0.36182397760410295,
+      "max_drawdown": -0.1402697298075775,
+      "turnover": 0.02574432537093931
+    },
+    "min-var (Ledoit-Wolf)": {
+      "return": 0.03025108744901338,
+      "vol": 0.08310357514139144,
+      "sharpe": 0.36304428978345427,
+      "max_drawdown": -0.14007863580616212,
+      "turnover": 0.025220528328288916
+    },
+    "max-Sharpe (LW)": {
+      "return": 0.045201610253609574,
+      "vol": 0.127077378155884,
+      "sharpe": 0.3452198554890915,
+      "max_drawdown": -0.2448541922783536,
+      "turnover": 0.19894401098463788
+    },
+    "Black-Litterman (balanced)": {
+      "return": 0.03191274544187102,
+      "vol": 0.20984662151298986,
+      "sharpe": 0.1514946148610194,
+      "max_drawdown": -0.38664685496761236,
+      "turnover": 0.019455463703617015
+    }
+  },
+  "min_variance_vol_reduction_pct": 53.90445824112036,
+  "min_variance_dd_reduction_pct": 59.60362966203168,
+  "shrinkage_sharpe_gain": 0.0012203121793513312,
+  "verdict": "ship-min-variance-for-risk"
+}

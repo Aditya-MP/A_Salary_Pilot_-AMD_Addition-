@@ -1,0 +1,95 @@
+{
+  "model": "m1_categoriser",
+  "trained_at": "2026-08-26T11:03:35",
+  "n_train": 3105,
+  "n_test": 1036,
+  "vocabulary": 9360,
+  "temperature": 0.25,
+  "baseline": {
+    "accuracy": 0.3223938223938224,
+    "macro_f1": 0.04063260340632604
+  },
+  "test": {
+    "accuracy": 0.9806949806949807,
+    "macro_f1": 0.9738683243992755,
+    "ece": 0.016741133031744557
+  },
+  "unseen_merchants": {
+    "accuracy": 0.3018867924528302,
+    "macro_f1": 0.24967948717948718
+  },
+  "per_class": {
+    "housing": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 29
+    },
+    "food": {
+      "precision": 0.9939393939393939,
+      "recall": 0.9820359281437125,
+      "f1": 0.9879518072289156,
+      "support": 334
+    },
+    "transport": {
+      "precision": 0.9895104895104895,
+      "recall": 0.9792387543252595,
+      "f1": 0.9843478260869565,
+      "support": 289
+    },
+    "utilities": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 55
+    },
+    "health": {
+      "precision": 1.0,
+      "recall": 0.9411764705882353,
+      "f1": 0.9696969696969697,
+      "support": 34
+    },
+    "family": {
+      "precision": 0.9375,
+      "recall": 0.8823529411764706,
+      "f1": 0.9090909090909091,
+      "support": 17
+    },
+    "lifestyle": {
+      "precision": 0.9390243902439024,
+      "recall": 0.9871794871794872,
+      "f1": 0.9625,
+      "support": 78
+    },
+    "subscriptions": {
+      "precision": 0.9259259259259259,
+      "recall": 0.9615384615384616,
+      "f1": 0.9433962264150944,
+      "support": 52
+    },
+    "debt": {
+      "precision": 0.9642857142857143,
+      "recall": 1.0,
+      "f1": 0.9818181818181818,
+      "support": 27
+    },
+    "investment": {
+      "precision": 0.9433962264150944,
+      "recall": 1.0,
+      "f1": 0.970873786407767,
+      "support": 50
+    },
+    "income": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 28
+    },
+    "transfer": {
+      "precision": 0.9767441860465116,
+      "recall": 0.9767441860465116,
+      "f1": 0.9767441860465116,
+      "support": 43
+    }
+  }
+}

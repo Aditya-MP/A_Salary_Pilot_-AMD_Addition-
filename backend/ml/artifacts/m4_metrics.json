@@ -1,0 +1,193 @@
+{
+  "model": "m4_garch_var",
+  "evaluated_at": "2026-08-26T11:05:46",
+  "alpha": 0.05,
+  "recovery": [
+    {
+      "regime": "equity index",
+      "param": "omega",
+      "true": 2e-06,
+      "fitted": 1.9256581945812978e-06,
+      "err_pct": 3.7170902709351075
+    },
+    {
+      "regime": "equity index",
+      "param": "alpha",
+      "true": 0.08,
+      "fitted": 0.06942979391614079,
+      "err_pct": 13.212757604824013
+    },
+    {
+      "regime": "equity index",
+      "param": "beta",
+      "true": 0.9,
+      "fitted": 0.9095904353199159,
+      "err_pct": 1.0656039244350979
+    },
+    {
+      "regime": "equity index",
+      "param": "persistence",
+      "true": 0.98,
+      "fitted": 0.9790202292360567,
+      "err_pct": 0.0999766085656417,
+      "half_life_days": 34.579298380578926
+    },
+    {
+      "regime": "crypto",
+      "param": "omega",
+      "true": 3e-05,
+      "fitted": 3.3567149582226175e-05,
+      "err_pct": 11.89049860742058
+    },
+    {
+      "regime": "crypto",
+      "param": "alpha",
+      "true": 0.14,
+      "fitted": 0.13236665192156072,
+      "err_pct": 5.452391484599496
+    },
+    {
+      "regime": "crypto",
+      "param": "beta",
+      "true": 0.82,
+      "fitted": 0.8166860766550782,
+      "err_pct": 0.4041369932831408
+    },
+    {
+      "regime": "crypto",
+      "param": "persistence",
+      "true": 0.96,
+      "fitted": 0.949052728576639,
+      "err_pct": 1.1403407732667645,
+      "half_life_days": 16.034433488617747
+    },
+    {
+      "regime": "debt fund",
+      "param": "omega",
+      "true": 1e-07,
+      "fitted": 9.706304757171398e-08,
+      "err_pct": 2.9369524282860167
+    },
+    {
+      "regime": "debt fund",
+      "param": "alpha",
+      "true": 0.04,
+      "fitted": 0.0337163818438755,
+      "err_pct": 15.70904539031125
+    },
+    {
+      "regime": "debt fund",
+      "param": "beta",
+      "true": 0.94,
+      "fitted": 0.9464936811691742,
+      "err_pct": 0.6908171456568362
+    },
+    {
+      "regime": "debt fund",
+      "param": "persistence",
+      "true": 0.98,
+      "fitted": 0.9802100630130498,
+      "err_pct": 0.021435001331614443,
+      "half_life_days": 35.053707521284
+    }
+  ],
+  "backtests": {
+    "equity index": {
+      "constant vol": {
+        "hit_rate": 0.07238095238095238,
+        "kupiec_p": 0.0017585516783675814,
+        "independence_p": 0.008193342289216532,
+        "pass": false
+      },
+      "ewma 0.94": {
+        "hit_rate": 0.05714285714285714,
+        "kupiec_p": 0.29863046329272436,
+        "independence_p": 0.8009690666307551,
+        "pass": true
+      },
+      "garch normal": {
+        "hit_rate": 0.05523809523809524,
+        "kupiec_p": 0.4434095024993643,
+        "independence_p": 0.9017301420994495,
+        "pass": true
+      },
+      "garch + FHS": {
+        "hit_rate": 0.058095238095238096,
+        "kupiec_p": 0.2400939196288353,
+        "independence_p": 0.7520331711783025,
+        "pass": true
+      },
+      "realised": {
+        "var": 0.017420908856920256,
+        "es": 0.026414439679173903
+      }
+    },
+    "crypto": {
+      "constant vol": {
+        "hit_rate": 0.06190476190476191,
+        "kupiec_p": 0.08738312277580818,
+        "independence_p": 0.058418081784072706,
+        "pass": true
+      },
+      "ewma 0.94": {
+        "hit_rate": 0.05523809523809524,
+        "kupiec_p": 0.4434095024993643,
+        "independence_p": 0.13540844255278117,
+        "pass": true
+      },
+      "garch normal": {
+        "hit_rate": 0.05333333333333334,
+        "kupiec_p": 0.623766278387671,
+        "independence_p": 0.5550468516322298,
+        "pass": true
+      },
+      "garch + FHS": {
+        "hit_rate": 0.05333333333333334,
+        "kupiec_p": 0.623766278387671,
+        "independence_p": 0.5550468516322298,
+        "pass": true
+      },
+      "realised": {
+        "var": 0.03678022275878925,
+        "es": 0.058810228517881355
+      }
+    },
+    "debt fund": {
+      "constant vol": {
+        "hit_rate": 0.05142857142857143,
+        "kupiec_p": 0.8325354422579616,
+        "independence_p": 0.8905129195899747,
+        "pass": true
+      },
+      "ewma 0.94": {
+        "hit_rate": 0.06,
+        "kupiec_p": 0.14890501759759311,
+        "independence_p": 0.6578628670299058,
+        "pass": true
+      },
+      "garch normal": {
+        "hit_rate": 0.05047619047619047,
+        "kupiec_p": 0.9436419379325304,
+        "independence_p": 0.838483817488963,
+        "pass": true
+      },
+      "garch + FHS": {
+        "hit_rate": 0.05523809523809524,
+        "kupiec_p": 0.4434095024993643,
+        "independence_p": 0.9017301420994495,
+        "pass": true
+      },
+      "realised": {
+        "var": 0.003519194468557553,
+        "es": 0.004963467869474153
+      }
+    }
+  },
+  "regimes_passed": {
+    "constant vol": 2,
+    "ewma 0.94": 3,
+    "garch normal": 3,
+    "garch + FHS": 3
+  },
+  "verdict": "ship-garch-for-forecast"
+}
