@@ -1,365 +1,483 @@
+@import './design/tokens.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ═══════════════════════════════════════════════════════════════════
+   BASE
+   ═══════════════════════════════════════════════════════════════════ */
+
 @layer base {
-  body {
-    @apply text-white antialiased overflow-x-hidden;
-    font-family: 'Inter', system-ui, sans-serif;
-    background: #0a0e1a;
-    min-height: 100vh;
+  * {
+    border-color: var(--line-subtle);
   }
 
-  /* Deep ambient neon wash + warm opposite accents */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    pointer-events: none;
-    background:
-      /* Neon side (right) */
-      radial-gradient(ellipse 80% 60% at 15% 5%, rgba(0, 255, 136, 0.12) 0%, transparent 55%),
-      radial-gradient(ellipse 60% 50% at 85% 85%, rgba(255, 0, 128, 0.10) 0%, transparent 50%),
-      radial-gradient(ellipse 70% 50% at 50% 50%, rgba(0, 200, 255, 0.06) 0%, transparent 50%),
-      radial-gradient(ellipse 50% 40% at 70% 15%, rgba(255, 170, 0, 0.07) 0%, transparent 45%),
-      /* Warm opposite side (left/bottom) — landing page inspired */
-      radial-gradient(ellipse 60% 50% at 5% 60%, rgba(16, 185, 129, 0.06) 0%, transparent 50%),
-      radial-gradient(ellipse 50% 40% at 30% 90%, rgba(20, 184, 166, 0.05) 0%, transparent 40%),
-      radial-gradient(ellipse 40% 30% at 90% 50%, rgba(248, 250, 252, 0.02) 0%, transparent 35%);
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply antialiased;
+    margin: 0;
+    min-height: 100vh;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--text);
+    background: var(--bg-void);
+    /* Font features that make financial tables line up. */
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'cv05' 1, 'ss03' 1;
+    overflow-x: hidden;
   }
 
   h1,
   h2,
   h3,
-  h4,
-  h5,
-  h6 {
-    @apply font-display text-white tracking-tight;
+  h4 {
+    font-family: 'Outfit', 'Inter', system-ui, sans-serif;
+    color: var(--text-hi);
+    letter-spacing: -0.02em;
+    font-weight: 600;
+    margin: 0;
   }
 
+  /* Every number in this app is monospaced so digits never jitter
+     as live prices tick. This is the single biggest "feels smooth" win. */
+  .num {
+    font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+
+  /* ─── Focus: one visible ring, never removed ─── */
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: var(--r-sm);
+  }
+
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  /* ─── Scrollbars ─── */
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 10px;
+    height: 10px;
   }
 
   ::-webkit-scrollbar-track {
-    background: #0d1224;
+    background: transparent;
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-emerald-500/30 rounded-full;
+    background: var(--surface-3);
+    border-radius: var(--r-full);
+    border: 3px solid transparent;
+    background-clip: content-box;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-emerald-400/50;
+    background: #2b3346;
+    background-clip: content-box;
+  }
+
+  ::selection {
+    background: rgba(0, 232, 134, 0.25);
+    color: var(--text-hi);
+  }
+
+  input,
+  textarea,
+  select,
+  button {
+    font: inherit;
+    color: inherit;
+  }
+
+  /* Kill the ugly number-input spinners — amounts are typed, not nudged. */
+  input[type='number']::-webkit-outer-spin-button,
+  input[type='number']::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  input[type='number'] {
+    -moz-appearance: textfield;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   COMPONENTS
+   ═══════════════════════════════════════════════════════════════════ */
 
 @layer components {
 
-  /* ─── Neon Glass Card ─── */
-  .glass-card {
-    @apply rounded-2xl relative overflow-hidden;
-    background: rgba(15, 20, 40, 0.7);
-    backdrop-filter: blur(20px) saturate(1.4);
-    -webkit-backdrop-filter: blur(20px) saturate(1.4);
-    border: 1px solid rgba(0, 255, 136, 0.15);
-    box-shadow:
-      0 0 1px rgba(0, 255, 136, 0.3),
-      0 4px 20px rgba(0, 0, 0, 0.4),
-      inset 0 1px 0 rgba(255, 255, 255, 0.03);
-    transition: all 0.3s ease;
+  /* ─── Surface: the single card treatment for the entire app.
+         Flat, hairline border, dark shadow. No coloured glow. ─── */
+  .surface {
+    background: var(--surface-1);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-1);
   }
 
-  .glass-card:hover {
-    border-color: rgba(0, 255, 136, 0.3);
-    box-shadow:
-      0 0 15px rgba(0, 255, 136, 0.1),
-      0 8px 32px rgba(0, 0, 0, 0.5),
-      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  .surface-raised {
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-2);
+  }
+
+  /* Interactive surfaces lift a little. Transform only — cheap to animate. */
+  .surface-interactive {
+    transition:
+      transform var(--t-base) var(--ease),
+      border-color var(--t-base) var(--ease),
+      background-color var(--t-base) var(--ease);
+    will-change: transform;
+  }
+
+  .surface-interactive:hover {
     transform: translateY(-2px);
+    border-color: var(--line-strong);
+    background: var(--surface-2);
   }
 
-  .glass-panel {
-    background: rgba(15, 20, 40, 0.6);
-    backdrop-filter: blur(24px) saturate(1.4);
-    -webkit-backdrop-filter: blur(24px) saturate(1.4);
-    border: 1px solid rgba(0, 255, 136, 0.1);
+  .surface-interactive:active {
+    transform: translateY(0);
+    transition-duration: var(--t-fast);
   }
 
-  /* ─── Vivid Neon Card (strong glow borders) ─── */
-  .neon-card {
-    @apply relative rounded-2xl overflow-hidden;
-    background: rgba(12, 16, 35, 0.75);
-    backdrop-filter: blur(16px) saturate(1.4);
-    -webkit-backdrop-filter: blur(16px) saturate(1.4);
-    border: 1px solid rgba(0, 255, 136, 0.18);
-    box-shadow:
-      0 0 2px rgba(0, 255, 136, 0.3),
-      0 4px 20px rgba(0, 0, 0, 0.4),
-      inset 0 1px 0 rgba(255, 255, 255, 0.04);
-    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  /* ─── Section header inside a card ─── */
+  .card-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--line-subtle);
   }
 
-  .neon-card::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(135deg, rgba(0, 255, 136, 0.04) 0%, transparent 40%, transparent 60%, rgba(255, 0, 128, 0.03) 100%);
-    pointer-events: none;
-    z-index: 1;
+  /* ─── Well: recessed area for inputs and inline detail ─── */
+  .well {
+    background: rgba(0, 0, 0, 0.22);
+    border: 1px solid var(--line-subtle);
+    border-radius: var(--r-md);
   }
 
-  .neon-card:hover {
-    border-color: rgba(0, 255, 136, 0.35);
-    box-shadow:
-      0 0 20px rgba(0, 255, 136, 0.12),
-      0 0 40px rgba(0, 255, 136, 0.05),
-      0 8px 32px rgba(0, 0, 0, 0.5),
-      inset 0 1px 0 rgba(255, 255, 255, 0.05);
-    transform: translateY(-2px);
+  /* ─── Inputs ─── */
+  .field {
+    width: 100%;
+    background: var(--surface-3);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    padding: 10px 14px;
+    color: var(--text-hi);
+    transition:
+      border-color var(--t-fast) var(--ease),
+      background-color var(--t-fast) var(--ease);
   }
 
-  /* ─── Neon Buttons ─── */
-  .glass-button {
-    @apply relative overflow-hidden font-semibold px-6 py-3 rounded-xl transition-all duration-300 hover:-translate-y-0.5 active:translate-y-0 border-0 text-black;
-    background: linear-gradient(135deg, #00ff88, #00cc6a);
-    box-shadow: 0 0 15px rgba(0, 255, 136, 0.4), 0 2px 8px rgba(0, 0, 0, 0.3);
+  .field::placeholder {
+    color: var(--text-faint);
   }
 
-  .glass-button:hover {
-    box-shadow: 0 0 30px rgba(0, 255, 136, 0.5), 0 6px 20px rgba(0, 0, 0, 0.4);
+  .field:hover {
+    border-color: var(--line-strong);
   }
 
-  .neon-button {
-    @apply relative px-6 py-3 rounded-xl font-bold border-0 transition-all duration-300 overflow-hidden;
-    background: linear-gradient(135deg, #00ff88, #00e077);
-    color: #0a0e1a;
-    box-shadow: 0 0 15px rgba(0, 255, 136, 0.35), 0 2px 10px rgba(0, 0, 0, 0.3);
-    text-shadow: none;
+  .field:focus {
+    outline: none;
+    border-color: var(--accent);
+    background: var(--surface-2);
+    box-shadow: 0 0 0 3px rgba(0, 232, 134, 0.12);
   }
 
-  .neon-button:hover {
-    box-shadow: 0 0 30px rgba(0, 255, 136, 0.5), 0 6px 24px rgba(0, 0, 0, 0.4);
-    transform: translateY(-1px);
+  /* ─── Buttons ─── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-weight: 600;
+    border-radius: var(--r-md);
+    padding: 10px 18px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    white-space: nowrap;
+    transition:
+      transform var(--t-fast) var(--ease),
+      background-color var(--t-fast) var(--ease),
+      border-color var(--t-fast) var(--ease),
+      opacity var(--t-fast) var(--ease);
   }
 
-  .glass-button-secondary {
-    @apply font-semibold px-6 py-3 rounded-xl transition-all duration-300;
-    background: rgba(15, 20, 40, 0.6);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(0, 255, 136, 0.2);
-    color: #00ff88;
-    box-shadow: 0 0 8px rgba(0, 255, 136, 0.1);
+  .btn:active {
+    transform: scale(0.975);
   }
 
-  .glass-button-secondary:hover {
-    border-color: rgba(0, 255, 136, 0.4);
-    box-shadow: 0 0 15px rgba(0, 255, 136, 0.2);
-    background: rgba(0, 255, 136, 0.08);
+  .btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
   }
 
-  /* ─── Gradient Border ─── */
-  .gradient-border {
+  .btn-primary {
+    background: var(--accent);
+    color: var(--accent-ink);
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background: var(--accent-hi);
+  }
+
+  .btn-secondary {
+    background: var(--surface-2);
+    color: var(--text-hi);
+    border-color: var(--line);
+  }
+
+  .btn-secondary:hover:not(:disabled) {
+    background: var(--surface-3);
+    border-color: var(--line-strong);
+  }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--text-lo);
+  }
+
+  .btn-ghost:hover:not(:disabled) {
+    background: var(--surface-2);
+    color: var(--text-hi);
+  }
+
+  .btn-danger {
+    background: var(--loss-dim);
+    color: var(--loss);
+    border-color: rgba(255, 77, 109, 0.25);
+  }
+
+  .btn-danger:hover:not(:disabled) {
+    background: rgba(255, 77, 109, 0.2);
+  }
+
+  /* ─── Label: the small uppercase caption above every metric ─── */
+  .label {
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+  }
+
+  /* ─── Live pulse dot — the only decorative animation that survived,
+         because it encodes real state (data is streaming). ─── */
+  .live-dot {
     position: relative;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
   }
 
-  .gradient-border::before {
+  .live-dot::after {
     content: '';
     position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    padding: 1px;
-    background: linear-gradient(135deg, #00ff88, #ff0080, #00c8ff);
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.3s;
+    inset: -3px;
+    border-radius: 50%;
+    border: 1px solid var(--accent);
+    animation: ping 2.4s var(--ease-out) infinite;
   }
 
-  .gradient-border:hover::before {
-    opacity: 1;
-  }
-
-  .shimmer {
-    position: relative;
-    overflow: hidden;
-  }
-
-  .shimmer::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 50%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(0, 255, 136, 0.15), transparent);
-    animation: shimmer-sweep 3s ease-in-out infinite;
-  }
-
-  .stat-highlight {
-    @apply relative;
-  }
-
-  .stat-highlight::after {
-    content: '';
-    position: absolute;
-    bottom: -4px;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, #00ff88, #00c8ff);
-    border-radius: 999px;
-    box-shadow: 0 0 8px rgba(0, 255, 136, 0.5);
+  /* ─── Skeleton shimmer for loading states ─── */
+  .skeleton {
+    background: linear-gradient(90deg,
+        var(--surface-2) 25%,
+        var(--surface-3) 37%,
+        var(--surface-2) 63%);
+    background-size: 400% 100%;
+    animation: shimmer 1.4s ease infinite;
+    border-radius: var(--r-sm);
   }
 }
+
+/* ─── Vivid background mode ──────────────────────────────────────────
+   Surfaces become translucent so the live market tape reads *through*
+   the cards rather than only in the gutters. The alpha is chosen so
+   body text still clears 4.5:1 against the darkest point of the tape —
+   glassmorphism that fails contrast is just a bug with a nice name. */
+
+[data-bg='vivid'] .surface,
+[data-bg='vivid'] .surface-raised {
+  background: rgba(16, 20, 31, 0.72);
+  backdrop-filter: blur(18px) saturate(1.25);
+  -webkit-backdrop-filter: blur(18px) saturate(1.25);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+[data-bg='vivid'] .surface-interactive:hover {
+  background: rgba(24, 29, 43, 0.82);
+}
+
+[data-bg='vivid'] .well {
+  background: rgba(0, 0, 0, 0.30);
+}
+
+[data-bg='vivid'] .field {
+  background: rgba(29, 35, 49, 0.82);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   UTILITIES
+   ═══════════════════════════════════════════════════════════════════ */
 
 @layer utilities {
-  .animate-fade-in-up {
-    animation: fadeInUp 0.8s ease-out forwards;
+  .text-hi {
+    color: var(--text-hi);
   }
 
-  .animate-float {
-    animation: float 6s ease-in-out infinite;
+  .text-mid {
+    color: var(--text);
   }
 
-  .animate-pulse-slow {
-    animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  .text-lo {
+    color: var(--text-lo);
   }
 
-  .animate-shimmer {
-    animation: shimmer-sweep 3s ease-in-out infinite;
+  .text-faint {
+    color: var(--text-faint);
   }
 
-  .animate-fade {
-    animation: fade 0.4s ease-out;
+  .text-accent {
+    color: var(--accent);
   }
 
-  .animate-breathe {
-    animation: breathe 8s ease-in-out infinite;
+  .text-gain {
+    color: var(--gain);
   }
 
-  .animate-float-slow {
-    animation: float 10s ease-in-out infinite;
+  .text-loss {
+    color: var(--loss);
   }
 
-  .animate-float-slower {
-    animation: float 14s ease-in-out infinite;
+  .text-warn {
+    color: var(--warn);
   }
 
-  .animate-glow-pulse {
-    animation: glow-pulse 3s ease-in-out infinite;
+  .text-info {
+    color: var(--info);
   }
 
-  .text-glow {
-    color: #00ff88;
-    text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+  /* Horizontal scroll container — wide tables/charts scroll themselves,
+     the page body never does. */
+  .scroll-x {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
   }
 
-  .text-glow-pink {
-    color: #ff0080;
-    text-shadow: 0 0 10px rgba(255, 0, 128, 0.5);
+  /* Hide scrollbar but keep scrolling (used on the segmented tabs). */
+  .no-bar {
+    scrollbar-width: none;
   }
 
-  .text-glow-cyan {
-    color: #00c8ff;
-    text-shadow: 0 0 10px rgba(0, 200, 255, 0.5);
-  }
-
-  .text-glow-orange {
-    color: #ffaa00;
-    text-shadow: 0 0 10px rgba(255, 170, 0, 0.5);
-  }
-
-  .text-gradient {
-    @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, #00ff88, #00c8ff);
-  }
-
-  .text-gradient-fire {
-    @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, #ff0080, #ffaa00);
-  }
-
-  .text-gradient-ice {
-    @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, #00c8ff, #a855f7);
+  .no-bar::-webkit-scrollbar {
+    display: none;
   }
 }
 
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
+/* ═══════════════════════════════════════════════════════════════════
+   KEYFRAMES — only what is actually referenced above.
+   ═══════════════════════════════════════════════════════════════════ */
 
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes float {
-
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-
-  50% {
-    transform: translateY(-20px);
-  }
-}
-
-@keyframes breathe {
-
-  0%,
-  100% {
-    opacity: 0.5;
-    transform: scale(1);
-  }
-
-  50% {
-    opacity: 1;
-    transform: scale(1.08);
-  }
-}
-
-@keyframes fade {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes shimmer-sweep {
+@keyframes ping {
   0% {
-    left: -100%;
+    transform: scale(1);
+    opacity: 0.8;
   }
 
-  50%,
+  70%,
   100% {
-    left: 200%;
+    transform: scale(2.4);
+    opacity: 0;
   }
 }
 
-@keyframes glow-pulse {
+@keyframes shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0 50%;
+  }
+}
+
+@keyframes drift {
 
   0%,
   100% {
-    box-shadow: 0 0 10px rgba(0, 255, 136, 0.2);
+    transform: translate3d(0, 0, 0);
   }
 
   50% {
-    box-shadow: 0 0 25px rgba(0, 255, 136, 0.4);
+    transform: translate3d(0, -18px, 0);
   }
+}
+
+.animate-drift {
+  animation: drift 14s ease-in-out infinite;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   AURORA — landing background motion.
+
+   Long durations on purpose. A colour field that completes a cycle in
+   8 seconds reads as a screensaver; the same field over 30 seconds
+   reads as atmosphere. Transform and opacity only, so every one of
+   these runs on the compositor and never triggers layout.
+   ═══════════════════════════════════════════════════════════════════ */
+
+@keyframes aurora-a {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.9; }
+  50%      { transform: translate3d(6vw, 5vh, 0) scale(1.14); opacity: 1; }
+}
+
+@keyframes aurora-b {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1.06); opacity: 0.75; }
+  50%      { transform: translate3d(-7vw, 7vh, 0) scale(1); opacity: 1; }
+}
+
+@keyframes aurora-c {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.7; }
+  50%      { transform: translate3d(5vw, -6vh, 0) scale(1.18); opacity: 0.95; }
+}
+
+@keyframes aurora-d {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1.1); opacity: 0.65; }
+  50%      { transform: translate3d(-5vw, -4vh, 0) scale(1); opacity: 0.9; }
+}
+
+@keyframes conic-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.aurora-a { animation: aurora-a 28s ease-in-out infinite; will-change: transform, opacity; }
+.aurora-b { animation: aurora-b 34s ease-in-out infinite; will-change: transform, opacity; }
+.aurora-c { animation: aurora-c 40s ease-in-out infinite; will-change: transform, opacity; }
+.aurora-d { animation: aurora-d 31s ease-in-out infinite; will-change: transform, opacity; }
+.conic-sweep { animation: conic-spin 90s linear infinite; will-change: transform; }
+
+/* Glass panel for landing sections sitting over the aurora. */
+.glass {
+  background: rgba(12, 16, 26, 0.55);
+  backdrop-filter: blur(10px) saturate(1.25);
+  -webkit-backdrop-filter: blur(10px) saturate(1.25);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: var(--r-lg);
 }

@@ -1,0 +1,99 @@
+/* ═══════════════════════════════════════════════════════════════════
+   SalaryPilot — Design Tokens
+   Disciplined neon: one ink base, one primary accent, neon reserved
+   strictly for DATA and STATE. Nothing decorative glows.
+   ═══════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ─── Surfaces: five steps, low-chroma ink ─── */
+  --bg-void: #06080e;
+  /* page behind everything */
+  --bg-base: #0a0d16;
+  /* app shell */
+  --surface-1: #10141f;
+  /* cards */
+  --surface-2: #161b28;
+  /* raised / hover */
+  --surface-3: #1d2331;
+  /* inputs, wells */
+
+  /* ─── Hairlines ─── */
+  --line-subtle: rgba(255, 255, 255, 0.05);
+  --line: rgba(255, 255, 255, 0.09);
+  --line-strong: rgba(255, 255, 255, 0.14);
+
+  /* ─── Text: a real ramp, not slate-500 everywhere ─── */
+  --text-hi: #f2f5fa;
+  --text: #c3ccdb;
+  --text-lo: #8b96a9;
+  --text-faint: #5c6577;
+
+  /* ─── Primary accent — the ONE brand colour ─── */
+  --accent: #00e886;
+  --accent-hi: #4dffb0;
+  --accent-lo: #00b368;
+  --accent-ink: #04160d;
+  /* text on accent fills */
+
+  /* ─── Data & state. Used ONLY for meaning, never decoration ─── */
+  --gain: #00e886;
+  --loss: #ff4d6d;
+  --warn: #ffb020;
+  --info: #38bdf8;
+  --neutral: #8b96a9;
+
+  /* Muted companions for fills/backgrounds of the above */
+  --gain-dim: rgba(0, 232, 134, 0.12);
+  --loss-dim: rgba(255, 77, 109, 0.12);
+  --warn-dim: rgba(255, 176, 32, 0.12);
+  --info-dim: rgba(56, 189, 248, 0.12);
+
+  /* ─── Categorical series — for charts with 3+ non-ranked series.
+         Distinct in hue AND lightness so they survive greyscale. ─── */
+  --series-1: #00e886;
+  --series-2: #38bdf8;
+  --series-3: #a78bfa;
+  --series-4: #ffb020;
+  --series-5: #f472b6;
+  --series-6: #5eead4;
+
+  /* ─── Elevation. Shadows are dark, not coloured. ─── */
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 4px 16px rgba(0, 0, 0, 0.45);
+  --shadow-3: 0 12px 40px rgba(0, 0, 0, 0.55);
+
+  /* The ONLY sanctioned glow: focus + live data emphasis */
+  --glow-accent: 0 0 0 1px rgba(0, 232, 134, 0.25), 0 0 24px rgba(0, 232, 134, 0.14);
+
+  /* ─── Radii ─── */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 20px;
+  --r-full: 999px;
+
+  /* ─── Motion. One easing family, three speeds. ─── */
+  --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --t-fast: 140ms;
+  --t-base: 240ms;
+  --t-slow: 420ms;
+
+  /* ─── Layout ─── */
+  --rail-w: 248px;
+  --rail-w-collapsed: 72px;
+  --page-max: 1280px;
+}
+
+/* Respect users who ask for less movement. */
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
