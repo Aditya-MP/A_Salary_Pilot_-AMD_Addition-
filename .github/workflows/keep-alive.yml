@@ -1,0 +1,38 @@
+# Keeps both Render free-tier services warm.
+#
+# Render's free tier spins a service down after ~15 minutes with no
+# incoming traffic, and the next real request pays a 30-60s cold start
+# before it answers anything - see the comments on Healthy() and
+# mlclient.New's http.Client in backend/go-api/internal/mlclient/client.go
+# for the bug this caused ("ML_SERVICE_URL is correct but reachable:
+# false", and later "the planning service is unavailable" on a real
+# allocate call). Pinging every 10 minutes, comfortably inside that 15
+# minute window, keeps both services from ever going to sleep in the
+# first place.
+#
+# NOTE: GitHub disables scheduled workflows automatically after 60 days
+# with no other repo activity (commits, PRs, etc.) - a push to the repo
+# re-enables it. Worth knowing if pings silently stop showing up in the
+# Actions tab.
+name: keep-alive
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Go API (/healthz)
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 60 \
+            https://a-salary-pilot-amd-addition.onrender.com/healthz)
+          echo "go-api /healthz -> $code"
+
+      - name: Ping ML service (/readyz)
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 60 \
+            https://a-salary-pilot-amd-addition-1.onrender.com/readyz)
+          echo "ml service /readyz -> $code"

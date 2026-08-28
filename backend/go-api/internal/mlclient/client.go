@@ -32,7 +32,16 @@ func New(baseURL string) *Client {
 			// Bounded. Without a timeout a wedged Python service turns into
 			// Go goroutines piling up until the API falls over too - one
 			// service's outage becoming two.
-			Timeout: 8 * time.Second,
+			//
+			// 20s, not 8s: measured against the deployed Render free-tier
+			// instance, /v1/allocate alone takes ~6s of real compute (three
+			// covariance-based optimisations plus the real-data evidence
+			// load) even warm, before any network or TLS overhead is added.
+			// 8s left almost no margin and made the allocator fail
+			// intermittently under completely normal conditions - this
+			// endpoint being slow is not the same as it being down, and the
+			// timeout should not conflate the two.
+			Timeout: 20 * time.Second,
 			Transport: &http.Transport{
 				MaxIdleConns:        20,
 				MaxIdleConnsPerHost: 20,
@@ -43,7 +52,13 @@ func New(baseURL string) *Client {
 }
 
 func (c *Client) Healthy(ctx context.Context) bool {
-	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	// Not 2s: Render free-tier spins the Python service down after ~15
+	// minutes idle, and the next request pays a 30-60s cold start before
+	// it answers anything, /readyz included. A 2s deadline made this
+	// report unreachable on almost every cold request even though
+	// ML_SERVICE_URL was correct and the service came up fine a moment
+	// later - indistinguishable from a real outage without this margin.
+	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/readyz", nil)

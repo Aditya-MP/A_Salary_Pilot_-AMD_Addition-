@@ -187,8 +187,14 @@ export interface AllocateResponse {
 }
 
 export function allocate(riskProfile: string) {
+    // Explicit, generous timeout: the Go API's own call to the model
+    // service allows up to 20s (measured real compute is ~6s, before
+    // network overhead - see mlclient.New's comment), so a shorter
+    // frontend timeout would abort the request and show a raw network
+    // error before the backend ever gets to return its own clean
+    // "unavailable" message.
     return authed<AllocateResponse>('/v1/allocate', {
         method: 'POST',
         body: JSON.stringify({ risk_profile: riskProfile }),
-    });
+    }, 25_000);
 }
