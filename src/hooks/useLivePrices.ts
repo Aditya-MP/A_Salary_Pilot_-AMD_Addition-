@@ -66,6 +66,18 @@ let snapshot: PriceSnapshot = {
 const listeners = new Set<() => void>();
 let timer: ReturnType<typeof setInterval> | null = null;
 
+// Mean-reversion strength per tick. A pure random walk (the previous
+// version) has no restoring force, so its cumulative drift grows with
+// sqrt(ticks) forever — leave a tab open for a few hours and a real
+// ₹10,000 position "grows" to ₹35,000 for no reason anyone could
+// explain, on money that was simulated but was supposed to move like a
+// market, not a lottery. THETA pulls each price back toward its opening
+// mark; the stationary spread this settles into is roughly
+// vol / sqrt(2 * THETA), independent of how long the feed has been
+// running — about ±6% for equity, ±26% for crypto, which is a
+// plausible intraday-ish band rather than an unbounded walk.
+const THETA = 0.002;
+
 function tick() {
     const price: Record<string, number> = {};
     const change: Record<string, number> = {};
@@ -78,14 +90,19 @@ function tick() {
     for (const ticker of Object.keys(OPEN)) {
         const vol = VOL[CLASS_OF[ticker]] ?? 0.003;
         const beta = CLASS_OF[ticker] === 'crypto' ? 0.3 : 0.75;
-        const drift = market * beta + (Math.random() - 0.5) * 2 * vol;
+        const current = snapshot.price[ticker];
+        const reversion = THETA * (Math.log(OPEN[ticker]) - Math.log(current));
+        const drift = reversion + market * beta + (Math.random() - 0.5) * 2 * vol;
 
-        const next = snapshot.price[ticker] * (1 + drift);
+        // exp(), not *(1+drift): keeps compounding well-behaved and the
+        // price positive no matter how long the walk runs.
+        const next = current * Math.exp(drift);
         price[ticker] = next;
         change[ticker] = ((next - OPEN[ticker]) / OPEN[ticker]) * 100;
     }
 
-    const nifty = snapshot.nifty * (1 + market);
+    const niftyReversion = THETA * (Math.log(24_812) - Math.log(snapshot.nifty));
+    const nifty = snapshot.nifty * Math.exp(market + niftyReversion);
 
     snapshot = {
         price,

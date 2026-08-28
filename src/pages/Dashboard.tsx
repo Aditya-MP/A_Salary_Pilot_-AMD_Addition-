@@ -11,6 +11,7 @@ import { Badge } from '../components/primitives/Badge';
 import { Stat } from '../components/primitives/Stat';
 import { StackedMeter } from '../components/primitives/Meter';
 import { RunwayHero } from '../components/dashboard/RunwayHero';
+import { PortfolioHero } from '../components/dashboard/PortfolioHero';
 import { FreedomScore } from '../components/dashboard/FreedomScore';
 import { money, moneyShort, pct, share, relativeDays, months as fmtMonths } from '../lib/format';
 
@@ -131,6 +132,9 @@ export default function Dashboard() {
 
                 {/* ─── Runway ─── */}
                 <RunwayHero runway={runway} projection={projection} />
+
+                {/* ─── Portfolio: what's invested, and how it's doing ─── */}
+                <PortfolioHero portfolio={portfolio} />
 
                 {/* ─── Actions and losses, side by side ─── */}
                 <div className="grid lg:grid-cols-2 gap-4 items-start">
