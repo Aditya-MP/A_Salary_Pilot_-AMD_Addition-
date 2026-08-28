@@ -4,6 +4,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/Aditya-MP/salarypilot/go-api/internal/auth"
 	"github.com/Aditya-MP/salarypilot/go-api/internal/config"
+	"github.com/Aditya-MP/salarypilot/go-api/internal/gemini"
 	"github.com/Aditya-MP/salarypilot/go-api/internal/mlclient"
 	"github.com/Aditya-MP/salarypilot/go-api/internal/rpc"
 	"github.com/Aditya-MP/salarypilot/go-api/internal/store"
@@ -30,6 +32,15 @@ func main() {
 }
 
 func run(log *slog.Logger) error {
+	// Before config.Load, so the file can supply what the shell did not.
+	// Absent is fine; an unreadable one is not, because silently ignoring
+	// it lands you on the default localhost DSN with no clue why.
+	if path, err := config.LoadDotEnv(); err != nil {
+		return fmt.Errorf("reading .env: %w", err)
+	} else if path != "" {
+		log.Info("loaded configuration file", "path", path)
+	}
+
 	cfg, err := config.Load()
 	if err != nil {
 		return err
@@ -71,9 +82,24 @@ func run(log *slog.Logger) error {
 			"url", cfg.MLServiceURL)
 	}
 
+	gem := gemini.New(cfg.GeminiAPIKey, cfg.GeminiModel)
+	if gem.Configured() {
+		log.Info("gemini configured", "model", cfg.GeminiModel)
+	} else {
+		log.Warn("GEMINI_API_KEY not set; AI Coach will degrade to local-only agents")
+	}
+
+	goog := auth.NewGoogleVerifier(cfg.GoogleClientID)
+	if goog.Configured() {
+		log.Info("google sign-in configured")
+	} else {
+		log.Warn("GOOGLE_CLIENT_ID not set; Google sign-in disabled, password auth still works")
+	}
+
 	srv := &http.Server{
-		Addr:         cfg.Addr,
-		Handler:      rpc.NewServer(st, issuer, ml, wallet.New(st.Pool()), log).Routes(),
+		Addr: cfg.Addr,
+		Handler: rpc.NewServer(st, issuer, ml, gem, goog, wallet.New(st.Pool()), log,
+			cfg.Env == "development", cfg.FrontendOrigin).Routes(),
 		ReadTimeout:  cfg.ReadTimeout,
 		WriteTimeout: cfg.WriteTimeout,
 		IdleTimeout:  60 * time.Second,

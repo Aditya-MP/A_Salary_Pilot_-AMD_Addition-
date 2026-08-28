@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { type PulseData, initializePulse, advancePulse as engineAdvancePulse } from '../engine/pulseEngine';
 import { analyzeMarket } from '../engine/trendEngine';
-import { seedProfile } from '../domain/seed';
+import { emptyProfile } from '../domain/empty';
 import type { FinancialProfile, RiskType, Holding, Goal } from '../domain/types';
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -21,6 +21,10 @@ import type { FinancialProfile, RiskType, Holding, Goal } from '../domain/types'
    ═══════════════════════════════════════════════════════════════════ */
 
 export const STORAGE_KEY = 'salary-pilot-storage';
+
+/** Where an unauthenticated visitor's tinkering goes. Never merged into a
+    real account: it exists so the store works on the landing page. */
+const ANON_KEY = `${STORAGE_KEY}:anon`;
 
 interface DecisionEntry {
     timestamp: string;
@@ -88,7 +92,8 @@ interface AppState {
 
     /* ─── Session ─── */
     onboardingCompleted: boolean;
-    completeOnboarding: () => void;
+    /** Writes the answers collected during onboarding and unlocks the app. */
+    completeOnboarding: (p: FinancialProfile) => void;
     resetOnboarding: () => void;
 
     userProfile: {
@@ -122,7 +127,7 @@ export const useAppStore = create<AppState>()(
     persist(
         (set, get) => ({
             /* ───────────── Profile ───────────── */
-            profile: seedProfile,
+            profile: emptyProfile,
 
             updateProfile: (patch) =>
                 set((s) => ({ profile: { ...s.profile, ...patch } })),
@@ -211,7 +216,7 @@ export const useAppStore = create<AppState>()(
                 })),
 
             /* ───────────── Salary ───────────── */
-            salary: seedProfile.income.inHand,
+            salary: 0,
             setSalary: (v) =>
                 set((s) => ({
                     salary: v,
@@ -221,7 +226,7 @@ export const useAppStore = create<AppState>()(
             split: { needs: 50, wants: 30, investments: 20 },
             setSplit: (v) => set({ split: v }),
 
-            risk: seedProfile.risk,
+            risk: emptyProfile.risk,
             setRisk: (v) =>
                 set((s) => ({ risk: v, profile: { ...s.profile, risk: v } })),
 
@@ -240,8 +245,8 @@ export const useAppStore = create<AppState>()(
             setMarketTrend: (d) => set({ marketTrend: d }),
 
             /* ───────────── Streak ───────────── */
-            streakCount: 3,
-            streakActive: true,
+            streakCount: 0,
+            streakActive: false,
             lastDecisionBlocked: false,
             incrementStreak: () =>
                 set((s) => ({ streakCount: s.streakCount + 1, lastDecisionBlocked: false })),
@@ -249,7 +254,7 @@ export const useAppStore = create<AppState>()(
             markBlocked: () => set({ lastDecisionBlocked: true }),
 
             /* ───────────── Legacy holdings ───────────── */
-            holdings: { equity: 45_000, crypto: 15_000, esg: 25_000 },
+            holdings: { equity: 0, crypto: 0, esg: 0 },
             setHoldings: (d) =>
                 set((s) => ({
                     holdings: {
@@ -260,12 +265,10 @@ export const useAppStore = create<AppState>()(
                 })),
 
             /* ───────────── Decision log ───────────── */
-            decisionLog: [
-                { timestamp: '10:42 AM', emotion: 'Fear', guardScore: 85, marketSignal: 'Bearish', result: 'Blocked', hash: '0x7f8a9d…2b1' },
-                { timestamp: 'Yesterday', emotion: 'Greed', guardScore: 72, marketSignal: 'Bullish', result: 'Approved', hash: '0x3c4e1f…9a2' },
-                { timestamp: '2d ago', emotion: 'Neutral', guardScore: 90, marketSignal: 'Stable', result: 'Approved', hash: '0x9b2a4c…8d3' },
-                { timestamp: '3d ago', emotion: 'FOMO', guardScore: 45, marketSignal: 'Volatile', result: 'Blocked', hash: '0x1d5e8f…4c6' },
-            ],
+            // Empty. This used to ship with four invented decisions,
+            // complete with fabricated block hashes, so a user who had
+            // never made a decision was shown a history of them.
+            decisionLog: [],
             addLog: (e) =>
                 set((s) => ({
                     decisionLog: [
@@ -282,29 +285,38 @@ export const useAppStore = create<AppState>()(
                 })),
 
             /* ───────────── Learning ───────────── */
-            completedLessons: ['fx-1', 'fx-2', 'tax-1'],
+            completedLessons: [],
             toggleLesson: (id) =>
                 set((s) => ({
                     completedLessons: s.completedLessons.includes(id)
                         ? s.completedLessons.filter((x) => x !== id)
                         : [...s.completedLessons, id],
                 })),
-            lessonStreak: 4,
+            lessonStreak: 0,
 
             /* ───────────── Session ───────────── */
-            onboardingCompleted: true,
-            completeOnboarding: () => set({ onboardingCompleted: true }),
+            // False, and it stays false until the user has actually told
+            // the app something about themselves. The old default of `true`
+            // is why a fresh account opened straight onto invented numbers.
+            onboardingCompleted: false,
+            completeOnboarding: (p) =>
+                set({
+                    profile: p,
+                    salary: p.income.inHand,
+                    risk: p.risk,
+                    onboardingCompleted: true,
+                }),
             resetOnboarding: () =>
                 set({
                     onboardingCompleted: false,
                     pulse: initializePulse(),
                     streakCount: 0,
                     appliedLevers: [],
-                    profile: seedProfile,
+                    profile: emptyProfile,
                 }),
 
             userProfile: {
-                name: seedProfile.name,
+                name: '',
                 email: '',
                 phone: '',
                 pan: '',
@@ -322,12 +334,25 @@ export const useAppStore = create<AppState>()(
             setPremium: (v) => set({ isPremium: v }),
             togglePremium: () => set((s) => ({ isPremium: !s.isPremium })),
 
-            logout: () => set({ onboardingCompleted: false }),
+            // Signing out is not a reset. The previous version cleared
+            // onboardingCompleted, which meant every returning user was
+            // marched through the questionnaire again while their answers
+            // sat untouched in storage. Unbinding the namespace is what
+            // ends the session; see bindStorageToUser.
+            logout: () => {},
         }),
         {
-            name: STORAGE_KEY,
+            // Placeholder. The real key is set by bindStorageToUser once
+            // the session is known; see the note below.
+            name: ANON_KEY,
             storage: createJSONStorage(() => localStorage),
             version: 2,
+            // Do NOT read localStorage at import time. At that moment we do
+            // not yet know who is signed in, so any hydration would be from
+            // the wrong namespace — and on a shared machine that means one
+            // user's salary and holdings rendering under another user's
+            // login before the session check has even finished.
+            skipHydration: true,
             // Anything not listed here is recreated from defaults on load,
             // which keeps stale seed data from surviving a code change.
             partialize: (s) => ({
@@ -350,6 +375,113 @@ export const useAppStore = create<AppState>()(
         }
     )
 );
+
+/* ═══════════════════════════════════════════════════════════════════
+   Per-user data isolation.
+
+   THE BUG THIS CLOSES
+   -------------------
+   One localStorage key held one financial profile. With a real login,
+   that is a data leak on any shared machine: user A signs out, user B
+   signs in, and the store rehydrates A's salary, debts and holdings
+   under B's name. B then edits them, and A gets B's numbers back.
+
+   The fix is to make the key part of the identity — one namespace per
+   user id — and to rebind it before anything renders.
+
+   THE ORDER BELOW IS THE WHOLE TRICK
+   ----------------------------------
+   Reset to defaults FIRST, then rehydrate. zustand's persist merges the
+   stored slice over whatever is currently in memory, so hydrating
+   straight into a populated store would leave every field the new user
+   has never set still holding the previous user's value. A user with no
+   saved data would inherit the entire previous profile. Wiping first
+   makes "absent in storage" mean "default", which is what it has to
+   mean.
+   ═══════════════════════════════════════════════════════════════════ */
+
+// Captured while the store is still pristine — skipHydration guarantees
+// nothing has been read from localStorage yet. Includes the action
+// closures, which are stable, so this can be used as a full replacement.
+const DEFAULTS = { ...useAppStore.getState() };
+
+let boundKey: string | null = null;
+
+/**
+ * Points the store at one user's storage namespace.
+ *
+ * Pass null on sign-out. That unbinds without deleting: the data stays
+ * under the user's own key so signing back in restores it.
+ */
+export async function bindStorageToUser(userId: string | null): Promise<void> {
+    const key = userId ? `${STORAGE_KEY}:${userId}` : ANON_KEY;
+    if (key === boundKey) return;
+    boundKey = key;
+
+    // THE BUG THIS GUARDS AGAINST
+    // ---------------------------
+    // A first version always did setOptions(key) → setState(DEFAULTS, true)
+    // → rehydrate(). That reset was supposed to stop the previous user's
+    // fields leaking into a fresh account. Instead it broke every RETURNING
+    // user: setState triggers persist's write-through, and by that point
+    // setOptions had already pointed persist at THIS user's real storage
+    // slot — so the reset overwrote their saved onboarding answers with
+    // blank defaults a moment before rehydrate tried to read them back.
+    // Every login looked like a brand new account.
+    //
+    // The reset is only needed when there is nothing real to lose. For a
+    // returning user, skip it: partialize saves a fixed, complete set of
+    // fields, so a successful rehydrate always fully overwrites every one
+    // of them, and no prior reset is needed to prevent cross-user leakage.
+    let hasStoredData = false;
+    try {
+        hasStoredData = localStorage.getItem(key) !== null;
+    } catch {
+        hasStoredData = false;
+    }
+
+    useAppStore.persist.setOptions({ name: key });
+
+    if (!hasStoredData) {
+        // Replace, not merge (the `true`), so no field of the previous
+        // user can survive into a brand new account.
+        useAppStore.setState(DEFAULTS, true);
+    }
+
+    // Awaited, because the caller needs to know the store holds this
+    // user's data before it renders anything derived from it.
+    await useAppStore.persist.rehydrate();
+}
+
+/**
+ * Stamps the signed-in identity onto the profile.
+ *
+ * Only fills what is still at its default. A user who has edited their
+ * display name keeps it; the server's copy does not overwrite a local
+ * choice on every boot.
+ */
+export function applyIdentity(identity: { name: string; email: string }): void {
+    const s = useAppStore.getState();
+    const patch: Partial<AppState['userProfile']> = {};
+
+    if (!s.userProfile.email) patch.email = identity.email;
+    if (identity.name && s.userProfile.name === DEFAULTS.userProfile.name) {
+        patch.name = identity.name;
+    }
+    if (Object.keys(patch).length) s.setUserProfile(patch);
+
+    // The financial profile carries a name too, and it is what greets the
+    // user on the dashboard. A screen that says "Good morning, Arjun" to
+    // someone called Aditya undoes every other personalisation on it.
+    if (identity.name && s.profile.name === DEFAULTS.profile.name) {
+        s.updateProfile({ name: identity.name });
+    }
+}
+
+/** Which namespace is live. Exported for the profile screen to show. */
+export function boundStorageKey(): string | null {
+    return boundKey;
+}
 
 /* ═══════════════════════════════════════════════════════════════════
    Selectors — subscribe narrowly so a live price tick does not

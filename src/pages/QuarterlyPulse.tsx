@@ -51,7 +51,37 @@ export default function QuarterlyPulse() {
     const capital = pulse.stagedCapital;
     const ready = pulse.state === 'strike';
 
-    const taxSavable = ALLOCATIONS.filter((a) => a.saver).reduce((s, a) => s + capital * a.pct, 0);
+    /* ── Tax savings, capped at what this user can actually still claim ──
+       A previous version summed every "saver" slice's percentage of
+       capital and called the whole thing deductible, regardless of how
+       much 80C or 80CCD(1B) room this specific person has left. Someone
+       who already fills 80C through EPF elsewhere would have been shown
+       a tax saving on money that earns them no deduction at all — the
+       same kind of invented number this app has spent a lot of effort
+       removing everywhere else. This uses the real headroom collected
+       during onboarding instead of assuming the slice is always usable. */
+    const c80 = profile.deductions.find((d) => d.section === '80C');
+    const cNps = profile.deductions.find((d) => d.section === '80CCD1B');
+    const headroom80C = c80 ? Math.max(0, c80.limit - c80.used) : 0;
+    const headroomNps = cNps ? Math.max(0, cNps.limit - cNps.used) : 0;
+
+    const elssPct = ALLOCATIONS.find((a) => a.label === 'ELSS Mutual Funds')!.pct;
+    const ppfPct = ALLOCATIONS.find((a) => a.label === 'PPF Contribution')!.pct;
+    const npsPct = ALLOCATIONS.find((a) => a.label === 'NPS Tier-I')!.pct;
+    const esgPct = ALLOCATIONS.find((a) => a.label === 'ESG / Green Bonds')!.pct;
+
+    // ELSS and PPF share the one 80C ceiling; NPS draws from the separate,
+    // additional 80CCD(1B) ceiling. ESG/green bonds' Sec 54EC eligibility is
+    // a different rule this app has no headroom data for, so that slice's
+    // existing claim is left as-is.
+    const proposed80C = capital * (elssPct + ppfPct);
+    const proposedNps = capital * npsPct;
+    const eligible80C = Math.min(proposed80C, headroom80C);
+    const eligibleNps = Math.min(proposedNps, headroomNps);
+
+    const headroomExceeded = eligible80C < proposed80C || eligibleNps < proposedNps;
+
+    const taxSavable = eligible80C + eligibleNps + capital * esgPct;
     const estimatedTaxSaved = Math.round(taxSavable * regimes.old.marginal);
 
     const fire = (msg: string) => {
@@ -61,7 +91,16 @@ export default function QuarterlyPulse() {
 
     const advance = () => {
         advancePulse(monthlyInvestment);
-        fire(`Month ${Math.min(3, pulse.currentMonth + 1)} staged`);
+        // Read the store fresh rather than computing from the pre-update
+        // `pulse` this closure captured — with the engine now able to flip
+        // straight to "ready" on the third click, a message derived from
+        // the stale value could describe a state that already changed.
+        const updated = useAppStore.getState().pulse;
+        fire(
+            updated.state === 'strike'
+                ? `All 3 months staged — ${money(updated.stagedCapital)} ready to deploy`
+                : `Month ${updated.currentMonth} of 3 staged ✓`
+        );
     };
 
     return (
@@ -182,6 +221,45 @@ export default function QuarterlyPulse() {
                                 ))}
                             </CardBody>
                         </Card>
+
+                        <Card>
+                            <CardHead
+                                icon={Shield}
+                                title='"Why not just buy the shares myself?"'
+                                subtitle="The honest answer, not a sales pitch"
+                                accent="var(--info)"
+                            />
+                            <CardBody className="space-y-3">
+                                <p className="text-[11.5px] text-lo leading-relaxed">
+                                    This feature does <span className="text-hi font-semibold">not</span>{' '}
+                                    claim to earn you more than investing the same money yourself, today,
+                                    in one go. Historically a lump sum invested immediately beats spreading
+                                    it out more often than not, because markets rise more years than they
+                                    fall. Anyone telling you otherwise is selling something.
+                                </p>
+                                <p className="text-[11.5px] text-lo leading-relaxed">
+                                    What this actually changes:
+                                </p>
+                                {[
+                                    ['You skip the allocation decision', 'Six instruments, weighted, is a research task. Most people either never do it or do it once and never revisit it.'],
+                                    ['Sizing matches your real deduction room', 'The ELSS, PPF and NPS slices are capped at what you told us you have left under 80C and 80CCD(1B) — not a guess.'],
+                                    ['Fewer chances to panic', 'One decision every three months beats twelve. The damage in most portfolios comes from selling low in a bad week, not from the strategy itself.'],
+                                ].map(([h, b]) => (
+                                    <div key={h} className="flex items-start gap-2.5">
+                                        <Check size={13} className="shrink-0 mt-0.5" style={{ color: 'var(--info)' }} />
+                                        <div className="min-w-0">
+                                            <p className="text-[12px] font-semibold text-hi">{h}</p>
+                                            <p className="text-[11px] text-faint leading-relaxed mt-0.5">{b}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                                <p className="text-[10.5px] text-faint pt-1">
+                                    Right now every path in this app — here and on Invest — puts money into
+                                    a diversified plan you approve, never a single company. That is a
+                                    deliberate limit, not an oversight: see the note on Invest for why.
+                                </p>
+                            </CardBody>
+                        </Card>
                     </div>
 
                     {/* ─── Planned allocation ─── */}
@@ -235,6 +313,15 @@ export default function QuarterlyPulse() {
                                         {money(estimatedTaxSaved)}
                                     </p>
                                 </div>
+                            )}
+
+                            {capital > 0 && headroomExceeded && (
+                                <p className="text-[11px] text-faint mt-2.5 leading-relaxed">
+                                    Some of this quarter's ELSS, PPF or NPS money goes past what you have
+                                    left under 80C / 80CCD(1B) — from what you told us during setup, that
+                                    portion earns no further deduction. It still gets invested; the figure
+                                    above only counts the part that genuinely reduces your tax.
+                                </p>
                             )}
                         </CardBody>
                     </Card>

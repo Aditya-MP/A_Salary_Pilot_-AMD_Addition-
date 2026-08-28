@@ -67,3 +67,13 @@ backend/ml/**/__pycache__/
 backend/ml/.venv/
 backend/ml/mlruns/
 backend/ml/artifacts/*.npz
+
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+
+# Fetched real market data (NSE constituent list + Yahoo Finance history) —
+# regenerable, not source. Rebuilt at deploy time (see fetch_data.py), not
+# committed — hundreds of files, and it goes stale the moment it's frozen.
+backend/ml/data_cache/

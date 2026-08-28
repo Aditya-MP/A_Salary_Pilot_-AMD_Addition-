@@ -5,29 +5,40 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
 	"github.com/Aditya-MP/salarypilot/go-api/internal/auth"
 	"github.com/Aditya-MP/salarypilot/go-api/internal/engine"
+	"github.com/Aditya-MP/salarypilot/go-api/internal/gemini"
 	"github.com/Aditya-MP/salarypilot/go-api/internal/mlclient"
 	"github.com/Aditya-MP/salarypilot/go-api/internal/store"
 	"github.com/Aditya-MP/salarypilot/go-api/internal/wallet"
 )
 
 type Server struct {
-	store  *store.Store
-	issuer *auth.Issuer
-	ml     *mlclient.Client
-	wallet *wallet.Service
-	log    *slog.Logger
+	store          *store.Store
+	issuer         *auth.Issuer
+	ml             *mlclient.Client
+	gemini         *gemini.Client
+	googleAuth     *auth.GoogleVerifier
+	wallet         *wallet.Service
+	log            *slog.Logger
+	dev            bool
+	frontendOrigin string
 }
 
-func NewServer(st *store.Store, iss *auth.Issuer, ml *mlclient.Client,
-	w *wallet.Service, log *slog.Logger) *Server {
-	return &Server{store: st, issuer: iss, ml: ml, wallet: w, log: log}
+func NewServer(st *store.Store, iss *auth.Issuer, ml *mlclient.Client, gem *gemini.Client,
+	goog *auth.GoogleVerifier, w *wallet.Service, log *slog.Logger, dev bool,
+	frontendOrigin string) *Server {
+	return &Server{
+		store: st, issuer: iss, ml: ml, gemini: gem, googleAuth: goog, wallet: w, log: log,
+		dev: dev, frontendOrigin: strings.TrimSuffix(frontendOrigin, "/"),
+	}
 }
 
 func (s *Server) Routes() http.Handler {
@@ -44,24 +55,32 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /readyz", s.handleReady)
 
 	mux.HandleFunc("POST /v1/auth/register", s.handleRegister)
+	mux.HandleFunc("POST /v1/auth/google", s.handleGoogleAuth)
 	mux.HandleFunc("POST /v1/auth/login", s.handleLogin)
 	mux.HandleFunc("POST /v1/auth/refresh", s.handleRefresh)
 
 	mux.Handle("GET /v1/me", s.requireAuth(http.HandlerFunc(s.handleMe)))
+	mux.Handle("POST /v1/auth/logout", s.requireAuth(http.HandlerFunc(s.handleLogout)))
 
-	// Open during development so the frontend can be wired before auth is
-	// finished. These move behind requireAuth before anything is deployed.
-	mux.HandleFunc("POST /v1/runway", s.handleRunway)
-	mux.HandleFunc("POST /v1/categorise", s.handleCategorise)
-	mux.HandleFunc("POST /v1/simulate", s.handleSimulate)
+	// Were open during development so the frontend could be wired before
+	// auth was finished - now behind requireAuth ahead of hosting this
+	// publicly. An unauthenticated categorise/simulate endpoint on a real
+	// deployment is just free compute for anyone who finds the URL.
+	mux.Handle("POST /v1/runway", s.requireAuth(http.HandlerFunc(s.handleRunway)))
+	mux.Handle("POST /v1/categorise", s.requireAuth(http.HandlerFunc(s.handleCategorise)))
+	mux.Handle("POST /v1/simulate", s.requireAuth(http.HandlerFunc(s.handleSimulate)))
 
 	// Wallet moves money, so every route is behind auth with no exceptions.
 	// The dev-open pattern above is acceptable for stateless computation and
 	// is not acceptable here.
+	mux.Handle("POST /v1/allocate", s.requireAuth(http.HandlerFunc(s.handleAllocate)))
+	mux.Handle("POST /v1/coach", s.requireAuth(http.HandlerFunc(s.handleCoach)))
+	mux.Handle("GET /v1/screen", s.requireAuth(http.HandlerFunc(s.handleScreen)))
 	mux.Handle("GET /v1/wallet", s.requireAuth(http.HandlerFunc(s.handleWallet)))
 	mux.Handle("GET /v1/wallet/history", s.requireAuth(http.HandlerFunc(s.handleWalletHistory)))
 	mux.Handle("POST /v1/wallet/topup", s.requireAuth(http.HandlerFunc(s.handleTopUp)))
 	mux.Handle("POST /v1/wallet/invest", s.requireAuth(http.HandlerFunc(s.handleInvest)))
+	mux.Handle("POST /v1/wallet/redeem", s.requireAuth(http.HandlerFunc(s.handleRedeem)))
 	mux.Handle("POST /v1/wallet/withdraw", s.requireAuth(http.HandlerFunc(s.handleWithdraw)))
 
 	return s.withCORS(s.withRequestLog(mux))
@@ -153,6 +172,82 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 	s.issueAndRespond(w, r, u.ID, http.StatusCreated)
 }
 
+type googleAuthReq struct {
+	IDToken string `json:"id_token"`
+}
+
+// handleGoogleAuth signs a user in (or up, on their first Google sign-in -
+// there is deliberately no separate "register with Google" flow, since
+// Google itself has already verified who they are) from a Google Identity
+// Services ID token minted client-side. Same issueAndRespond as password
+// login/register, so everything downstream of this - the JWT shape, the
+// session row, the frontend's session.ts - is completely unaware which
+// credential the user actually typed.
+func (s *Server) handleGoogleAuth(w http.ResponseWriter, r *http.Request) {
+	var req googleAuthReq
+	if !decode(w, r, &req) {
+		return
+	}
+	if req.IDToken == "" {
+		writeErr(w, http.StatusBadRequest, "id_token is required")
+		return
+	}
+
+	claims, err := s.googleAuth.Verify(r.Context(), req.IDToken)
+	switch {
+	case errors.Is(err, auth.ErrGoogleNotConfigured):
+		writeErr(w, http.StatusServiceUnavailable, "Google sign-in is not available on this server")
+		return
+	case errors.Is(err, auth.ErrGoogleEmailUnverified):
+		writeErr(w, http.StatusForbidden, "your Google account's email is not verified")
+		return
+	case err != nil:
+		s.log.Warn("google token verify failed", "error", err)
+		writeErr(w, http.StatusUnauthorized, "could not verify Google sign-in")
+		return
+	}
+
+	email := strings.ToLower(strings.TrimSpace(claims.Email))
+	googleSub := claims.Subject
+
+	u, err := s.store.UserByGoogleSub(r.Context(), googleSub)
+	if errors.Is(err, store.ErrNotFound) {
+		u, err = s.findOrCreateGoogleUser(r.Context(), email, googleSub, claims.Name)
+	}
+	if err != nil {
+		s.log.Error("google sign-in", "error", err)
+		writeErr(w, http.StatusInternalServerError, "could not sign you in")
+		return
+	}
+
+	s.issueAndRespond(w, r, u.ID, http.StatusOK)
+}
+
+// findOrCreateGoogleUser handles the "no account linked to this Google
+// identity yet" case: link an existing password account with a matching,
+// Google-verified email, or create a brand new one. Linking rather than
+// erroring on a matching email is deliberate - the alternative is two
+// disconnected accounts sharing one inbox, with the user's original wallet
+// and profile invisible from whichever one they happen to sign into next.
+func (s *Server) findOrCreateGoogleUser(ctx context.Context, email, googleSub, name string) (store.User, error) {
+	existing, err := s.store.UserByEmail(ctx, email)
+	if err == nil {
+		return s.store.LinkGoogleSub(ctx, existing.ID, googleSub)
+	}
+	if !errors.Is(err, store.ErrNotFound) {
+		return store.User{}, err
+	}
+
+	u, err := s.store.CreateUserGoogle(ctx, email, googleSub, name)
+	if err != nil {
+		return store.User{}, err
+	}
+	if err := s.wallet.EnsureAccounts(ctx, u.ID); err != nil {
+		return store.User{}, fmt.Errorf("create ledger accounts for google user: %w", err)
+	}
+	return u, nil
+}
+
 func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	var req registerReq
 	if !decode(w, r, &req) {
@@ -215,8 +310,36 @@ func (s *Server) handleRefresh(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, tokens)
 }
 
+// handleMe is what the frontend calls on boot to answer "whose data is this?".
+// It returns the display name and email as well as the id, because a client
+// that only knows an opaque UUID cannot greet anyone by name and ends up
+// keeping a second, drifting copy of the profile in local storage.
 func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]string{"user_id": userIDFrom(r.Context())})
+	u, err := s.store.UserByID(r.Context(), userIDFrom(r.Context()))
+	if err != nil {
+		// A valid token for a user who no longer exists - deleted account,
+		// wiped database - is not a server error. It is an expired session.
+		writeErr(w, http.StatusUnauthorized, "session is no longer valid")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"user_id":    u.ID,
+		"email":      u.Email,
+		"name":       u.DisplayName,
+		"created_at": u.CreatedAt,
+	})
+}
+
+// handleLogout revokes every refresh token for the user. Deleting the tokens
+// in the browser alone would leave a stolen refresh token valid for its full
+// lifetime, so the server has to be told too.
+func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
+	if err := s.store.RevokeAllSessions(r.Context(), userIDFrom(r.Context())); err != nil {
+		s.log.Error("revoke sessions", "error", err)
+		writeErr(w, http.StatusInternalServerError, "could not sign you out")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (s *Server) handleRunway(w http.ResponseWriter, r *http.Request) {
@@ -257,6 +380,92 @@ func (s *Server) handleCategorise(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, out)
 }
 
+// handleAllocate asks M5 where a plan's money should go.
+//
+// Behind requireAuth, unlike the other model endpoints: this one is a
+// recommendation about a specific person's money, and an unauthenticated
+// investment recommendation endpoint is not something to leave open even in
+// development.
+type coachReq struct {
+	// A short, plain-text summary of the user's own numbers - runway,
+	// score, portfolio, debt, tax headroom - built client-side from
+	// values already computed for their dashboard. Bounded below so one
+	// request cannot balloon the prompt sent upstream.
+	Context string `json:"context"`
+}
+
+// The instruction half of the prompt lives here, server-side, not in the
+// client request - the client supplies DATA, the server supplies the
+// framing, so the "be concise, be a financial advisor" instruction is not
+// something a request body alone can simply overwrite.
+const coachSystemPrompt = `You are an expert financial advisor AI for Indian salaried professionals.
+Provide a concise, 2-3 sentence actionable piece of advice based on the numbers below. Be specific to the numbers given, professional, and reassuring rather than alarmist. Do not repeat the numbers back verbatim - use them to reach a conclusion.
+
+Numbers: `
+
+func (s *Server) handleCoach(w http.ResponseWriter, r *http.Request) {
+	var req coachReq
+	if !decode(w, r, &req) {
+		return
+	}
+	req.Context = strings.TrimSpace(req.Context)
+	if req.Context == "" {
+		writeErr(w, http.StatusBadRequest, "context is required")
+		return
+	}
+	if len(req.Context) > 2000 {
+		writeErr(w, http.StatusBadRequest, "context is too long")
+		return
+	}
+
+	if !s.gemini.Configured() {
+		// A real, honest status rather than a fake-looking canned reply -
+		// the frontend shows this as "not available" and falls back to the
+		// six local agents, which compute real findings from the same
+		// numbers without needing an external call at all.
+		writeErr(w, http.StatusServiceUnavailable, "the AI coach is not configured on this server")
+		return
+	}
+
+	advice, err := s.gemini.Generate(r.Context(), coachSystemPrompt+req.Context)
+	if err != nil {
+		s.log.Warn("gemini generate failed", "error", err)
+		writeErr(w, http.StatusServiceUnavailable, "could not reach the AI coach right now")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{"advice": advice})
+}
+
+func (s *Server) handleAllocate(w http.ResponseWriter, r *http.Request) {
+	var req mlclient.AllocateRequest
+	if !decode(w, r, &req) {
+		return
+	}
+	switch req.RiskProfile {
+	case "conservative", "balanced", "aggressive":
+	case "":
+		req.RiskProfile = "balanced"
+	default:
+		writeErr(w, http.StatusBadRequest,
+			"risk_profile must be conservative, balanced or aggressive")
+		return
+	}
+
+	out, err := s.ml.Allocate(r.Context(), req)
+	if err != nil {
+		s.log.Warn("allocate failed", "error", err)
+		// No local fallback, deliberately. Every other screen degrades to a
+		// local approximation when the model service is down; an investment
+		// allocation must not. A guessed allocation is worse than no
+		// allocation, because the user cannot tell the difference.
+		writeErr(w, http.StatusServiceUnavailable,
+			"the planning service is unavailable, so no allocation can be made right now")
+		return
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
 func (s *Server) handleSimulate(w http.ResponseWriter, r *http.Request) {
 	var req mlclient.SimulateRequest
 	if !decode(w, r, &req) {
@@ -285,6 +494,20 @@ func (s *Server) handleSimulate(w http.ResponseWriter, r *http.Request) {
 // ── wallet ──────────────────────────────────────────────────────────────
 //
 // SIMULATED MONEY. No real funds move; see internal/wallet.
+
+// handleScreen proxies M8. Same reasoning as handleAllocate for requiring
+// auth: this is a specific recommendation surface, not a generic market
+// data endpoint, and stays behind login even in development.
+func (s *Server) handleScreen(w http.ResponseWriter, r *http.Request) {
+	out, err := s.ml.Screen(r.Context())
+	if err != nil {
+		s.log.Warn("screen failed", "error", err)
+		writeErr(w, http.StatusServiceUnavailable,
+			"the screener is unavailable right now")
+		return
+	}
+	writeJSON(w, http.StatusOK, out)
+}
 
 func (s *Server) handleWallet(w http.ResponseWriter, r *http.Request) {
 	bal, err := s.wallet.Balance(r.Context(), userIDFrom(r.Context()))
@@ -363,6 +586,22 @@ func (s *Server) handleInvest(w http.ResponseWriter, r *http.Request) {
 	s.moneyResult(w, id, err)
 }
 
+// Selling. Without this the money flow is one-way: a user could put money in
+// and never get it back, which makes the whole investment loop untestable.
+func (s *Server) handleRedeem(w http.ResponseWriter, r *http.Request) {
+	var req moneyReq
+	if !decode(w, r, &req) {
+		return
+	}
+	if req.IdempotencyKey == "" || req.Ticker == "" {
+		writeErr(w, http.StatusBadRequest, "ticker and idempotency_key are required")
+		return
+	}
+	id, err := s.wallet.Redeem(r.Context(), userIDFrom(r.Context()), req.Ticker,
+		req.AmountPaise, req.UnitPricePaise, req.IdempotencyKey, req.Memo)
+	s.moneyResult(w, id, err)
+}
+
 func (s *Server) handleWithdraw(w http.ResponseWriter, r *http.Request) {
 	var req moneyReq
 	if !decode(w, r, &req) {
@@ -387,8 +626,25 @@ func (s *Server) withCORS(next http.Handler) http.Handler {
 		"http://localhost:5173": true,
 		"http://127.0.0.1:5173": true,
 	}
+	// The deployed frontend's real origin, e.g. https://salarypilot.vercel.app
+	// - set via FRONTEND_ORIGIN. Without this, production mode allows
+	// nothing but localhost and the hosted frontend simply cannot call its
+	// own API; the loopback exception below only fires in development.
+	if s.frontendOrigin != "" {
+		allowed[s.frontendOrigin] = true
+	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if origin := r.Header.Get("Origin"); allowed[origin] {
+		origin := r.Header.Get("Origin")
+		// Vite hops to 5174, 5175... when its default port is taken, and a
+		// hardcoded 5173 turns that into a CORS failure with no obvious
+		// cause. In development any loopback origin is accepted; in
+		// production the fixed list above is the only thing that passes.
+		//
+		// Evaluated per request rather than cached into `allowed`: that map
+		// is shared by every request goroutine, and writing to it here
+		// would be a data race on a plain Go map - which is a crash, not
+		// just a stale read.
+		if allowed[origin] || (s.dev && isLoopbackOrigin(origin)) {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
@@ -400,6 +656,18 @@ func (s *Server) withCORS(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// isLoopbackOrigin reports whether an Origin header names this machine over
+// plain HTTP. Parsed rather than prefix-matched: "http://localhost.evil.com"
+// starts with "http://localhost" and must not pass.
+func isLoopbackOrigin(origin string) bool {
+	u, err := url.Parse(origin)
+	if err != nil || u.Scheme != "http" {
+		return false
+	}
+	host := u.Hostname()
+	return host == "localhost" || host == "127.0.0.1" || host == "::1"
 }
 
 type ctxKey string

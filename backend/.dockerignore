@@ -1,0 +1,12 @@
+# Applies to the Go API's build context (backend/) — see go-api/Dockerfile's
+# header comment for why the context is backend/, not backend/go-api/.
+#
+# The Python ML service is a separate build with its own context
+# (backend/ml/) and its own .dockerignore there — excluded here so it never
+# gets pulled into the Go image, which has no use for it.
+ml/
+
+go-api/**/*_test.go
+.git/
+.gitignore
+*.md

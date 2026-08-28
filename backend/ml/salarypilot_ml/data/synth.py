@@ -29,6 +29,7 @@ replaced. Nothing downstream knows the difference.
 
 from __future__ import annotations
 
+import hashlib
 import random
 from dataclasses import dataclass
 from datetime import date, timedelta
@@ -326,7 +327,19 @@ def generate(
                 # Subscriptions and EMIs land on a stable day of month; that
                 # regularity is the signal M2 will later key off.
                 if m.category in ("subscriptions", "debt", "housing"):
-                    day_offset = (hash(m.name) % 26) + rng.randint(-1, 1)
+                    # NOT hash(m.name) - Python's built-in hash() is
+                    # deliberately randomised per PROCESS for strings
+                    # (security hardening since 3.3, controlled by
+                    # PYTHONHASHSEED), so a merchant's "stable" day of month
+                    # was silently reshuffling on every single server
+                    # restart despite `seed=7` being fixed everywhere else.
+                    # Every evaluation script in this project promises exact
+                    # reproducibility from a seed; this line quietly broke
+                    # that promise for every date-sensitive category. MD5 is
+                    # not randomised across processes - same input, same
+                    # output, forever, on any machine.
+                    stable_hash = int(hashlib.md5(m.name.encode()).hexdigest(), 16)
+                    day_offset = (stable_hash % 26) + rng.randint(-1, 1)
                 else:
                     day_offset = rng.randint(0, 29)
                 day = month_start + timedelta(days=max(0, min(29, day_offset)))

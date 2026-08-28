@@ -4,9 +4,10 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
     LayoutDashboard, Wallet, TrendingUp, Briefcase, Newspaper,
     GraduationCap, Bot, User, Crown, LogOut, PanelLeftClose, PanelLeft,
-    Receipt, Menu, Activity, Wand2,
+    Receipt, Menu, Activity, Wand2, PiggyBank, Sprout, LineChart,
 } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
+import { useAuthStore } from '../store/useAuthStore';
 import { useFinancials } from '../hooks/useFinancials';
 import { PageTransition } from '../components/motion/PageTransition';
 import { months } from '../lib/format';
@@ -35,6 +36,7 @@ const GROUPS: { title: string; items: { to: string; icon: React.ElementType; lab
         items: [
             { to: '/dashboard', icon: LayoutDashboard, label: 'Overview' },
             { to: '/dashboard/salary-splitting', icon: Wallet, label: 'Salary Routing' },
+            { to: '/dashboard/wallet', icon: PiggyBank, label: 'Wallet' },
             { to: '/dashboard/transactions', icon: Wand2, label: 'Transactions' },
             { to: '/dashboard/tax', icon: Receipt, label: 'Tax Centre' },
         ],
@@ -42,7 +44,9 @@ const GROUPS: { title: string; items: { to: string; icon: React.ElementType; lab
     {
         title: 'Grow',
         items: [
+            { to: '/dashboard/invest', icon: Sprout, label: 'Invest' },
             { to: '/dashboard/portfolio', icon: Briefcase, label: 'Portfolio' },
+            { to: '/dashboard/screener', icon: LineChart, label: 'Screener' },
             { to: '/dashboard/quarterly-pulse', icon: TrendingUp, label: 'Quarterly Pulse', premium: true },
             { to: '/dashboard/news', icon: Newspaper, label: 'Market News' },
         ],
@@ -58,7 +62,8 @@ const GROUPS: { title: string; items: { to: string; icon: React.ElementType; lab
 
 export default function DashboardLayout() {
     const isPremium = useAppStore((s) => s.isPremium);
-    const logout = useAppStore((s) => s.logout);
+    const signOut = useAuthStore((s) => s.signOut);
+    const user = useAuthStore((s) => s.user);
     const bgIntensity = useAppStore((s) => s.bgIntensity);
     const setBgIntensity = useAppStore((s) => s.setBgIntensity);
     const navigate = useNavigate();
@@ -68,8 +73,11 @@ export default function DashboardLayout() {
     const location = useLocation();
     const { runway } = useFinancials();
 
-    const handleLogout = () => {
-        logout();
+    // Signing out now revokes the refresh token server-side and unbinds
+    // this user's storage namespace. It deliberately does not delete their
+    // data — that stays under their key, waiting for them to come back.
+    const handleLogout = async () => {
+        await signOut();
         navigate('/');
     };
 
@@ -218,7 +226,20 @@ export default function DashboardLayout() {
                     }
                 >
                     <User size={16} className="shrink-0" aria-hidden />
-                    {!collapsed && <span>Profile</span>}
+                    {/* Whose data is on screen. With per-user storage this is
+                        not decoration: on a shared machine it is the only way
+                        to tell at a glance that you are looking at your own
+                        numbers and not the last person's. */}
+                    {!collapsed && (
+                        <span className="min-w-0">
+                            <span className="block truncate">{user?.name || 'Profile'}</span>
+                            {user?.email && (
+                                <span className="block text-[10.5px] text-faint truncate font-normal">
+                                    {user.email}
+                                </span>
+                            )}
+                        </span>
+                    )}
                 </NavLink>
 
                 <button
@@ -231,7 +252,7 @@ export default function DashboardLayout() {
                     )}
                 >
                     <LogOut size={16} className="shrink-0" aria-hidden />
-                    {!collapsed && <span>Log out</span>}
+                    {!collapsed && <span>Sign out</span>}
                 </button>
             </div>
         </>

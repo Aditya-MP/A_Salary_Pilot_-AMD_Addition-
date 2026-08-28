@@ -1,6 +1,7 @@
 {
   "model": "m5_portfolio",
-  "evaluated_at": "2026-08-26T11:11:32",
+  "data_source": "real: equity_large=^NSEI, equity_flexi=^CRSLDX, debt=GILT5YBEES.NS, gold=GOLDBEES.NS, esg=ESG.NS, crypto=BTC-USD (Yahoo Finance)",
+  "evaluated_at": "2026-08-26T23:52:15",
   "assets": [
     "equity_large",
     "equity_flexi",
@@ -9,60 +10,61 @@
     "esg",
     "crypto"
   ],
-  "train_days": 500,
+  "train_days": 252,
   "hold_days": 63,
-  "seeds": [
-    7,
-    11,
-    23
-  ],
-  "shrinkage_intensity": 0.009151426414500922,
+  "n_quarters": 7,
+  "evaluation_window": {
+    "start": "2024-09-17",
+    "end": "2026-08-26"
+  },
+  "shrinkage_intensity": 0.03460207514054536,
   "strategies": {
     "1/N equal weight": {
-      "return": 0.049829527309783815,
-      "vol": 0.18028549393365734,
-      "sharpe": 0.27544187864421277,
-      "max_drawdown": -0.3467604505905398,
+      "return": 0.09642612549149045,
+      "vol": 0.12283136711400694,
+      "sharpe": 0.7850285131320874,
+      "max_drawdown": -0.11903207242668867,
       "turnover": 0.0
     },
     "min-var uncapped": {
-      "return": 0.03260822584969973,
-      "vol": 0.040376425524220556,
-      "sharpe": 0.8064331892763944,
-      "max_drawdown": -0.05217389712128192,
-      "turnover": 0.010647304118471632
+      "return": 0.09818780072264016,
+      "vol": 0.04035334687278006,
+      "sharpe": 2.4332009196707234,
+      "max_drawdown": -0.027475310600957537,
+      "turnover": 0.08313688011384222
     },
     "min-var (sample cov)": {
-      "return": 0.03015360426230615,
-      "vol": 0.08311154384818474,
-      "sharpe": 0.36182397760410295,
-      "max_drawdown": -0.1402697298075775,
-      "turnover": 0.02574432537093931
+      "return": 0.13629246092191055,
+      "vol": 0.09002147250577323,
+      "sharpe": 1.5139994617747436,
+      "max_drawdown": -0.09919640236474114,
+      "turnover": 0.19108438794868907
     },
     "min-var (Ledoit-Wolf)": {
-      "return": 0.03025108744901338,
-      "vol": 0.08310357514139144,
-      "sharpe": 0.36304428978345427,
-      "max_drawdown": -0.14007863580616212,
-      "turnover": 0.025220528328288916
+      "return": 0.13649671455095327,
+      "vol": 0.08979314327764518,
+      "sharpe": 1.5201240269415468,
+      "max_drawdown": -0.09942026014799299,
+      "turnover": 0.13018722516199677
     },
     "max-Sharpe (LW)": {
-      "return": 0.045201610253609574,
-      "vol": 0.127077378155884,
-      "sharpe": 0.3452198554890915,
-      "max_drawdown": -0.2448541922783536,
-      "turnover": 0.19894401098463788
+      "return": 0.15478466646693473,
+      "vol": 0.11221596275351599,
+      "sharpe": 1.379346241558534,
+      "max_drawdown": -0.11978066703569601,
+      "turnover": 0.2967700645071194
     },
     "Black-Litterman (balanced)": {
-      "return": 0.03191274544187102,
-      "vol": 0.20984662151298986,
-      "sharpe": 0.1514946148610194,
-      "max_drawdown": -0.38664685496761236,
-      "turnover": 0.019455463703617015
+      "return": -0.016538537547344866,
+      "vol": 0.14101359584557108,
+      "sharpe": -0.11728328355981218,
+      "max_drawdown": -0.16950588358131735,
+      "turnover": 0.05672090811279049
     }
   },
-  "min_variance_vol_reduction_pct": 53.90445824112036,
-  "min_variance_dd_reduction_pct": 59.60362966203168,
-  "shrinkage_sharpe_gain": 0.0012203121793513312,
-  "verdict": "ship-min-variance-for-risk"
+  "min_variance_vol_reduction_pct": 26.897220646984298,
+  "min_variance_dd_reduction_pct": 16.476073951223956,
+  "shrinkage_sharpe_gain": 0.006124565166803153,
+  "verdict": "ship-min-var (Ledoit-Wolf)",
+  "caveat": "Evaluated on 7 real walk-forward quarters (2024-09-17 to 2026-08-26) - real, but a short window (ESG's real trading history only goes back to 2023). Treat this as an honest early read, not a settled result."
 }

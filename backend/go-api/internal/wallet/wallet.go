@@ -294,12 +294,35 @@ func (s *Service) Balance(ctx context.Context, userID string) (*Balance, error) 
 		}
 		if kind == "wallet" {
 			out.WalletPaise = paise
-		} else if ticker != nil {
-			out.Invested += paise
-			out.Holdings = append(out.Holdings, Position{
-				Ticker: *ticker, CostPaise: paise, Units: units,
-			})
+			continue
 		}
+		if ticker == nil {
+			continue
+		}
+		// A holding account survives being sold down to nothing - the
+		// account row stays so its history stays. But a position with no
+		// cost basis is not something the user owns, and listing it puts a
+		// ghost row in the portfolio for every instrument ever touched.
+		//
+		// Units are compared to a small epsilon, not exact zero. A "sell
+		// everything" redemption specifies unit_price_paise as a whole
+		// number of paise, while the true average cost per unit is an
+		// arbitrary decimal - so the removed unit count (paise divided by
+		// that rounded price) essentially never lands on the position's
+		// exact remaining units. Cost hits exactly zero every time (integer
+		// arithmetic throughout the ledger); units are left with genuine,
+		// unavoidable dust - orders of magnitude smaller than the smallest
+		// position that could exist for any instrument this app prices
+		// (the cheapest is tens of rupees a unit), and well below the 4
+		// decimal places formatUnits on the frontend would ever render.
+		const unitDust = 0.0001
+		if paise == 0 && units.Abs().LessThan(decimal.NewFromFloat(unitDust)) {
+			continue
+		}
+		out.Invested += paise
+		out.Holdings = append(out.Holdings, Position{
+			Ticker: *ticker, CostPaise: paise, Units: units,
+		})
 	}
 	return out, rows.Err()
 }

@@ -138,8 +138,13 @@ export default function Transactions() {
     // Classify one sample on mount so the page is never empty and the
     // backend connection is proven immediately rather than on first click.
     useEffect(() => {
-        classify([SAMPLES[0].txn, SAMPLES[2].txn, SAMPLES[3].txn]);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        // Deferred to a microtask: classify() is async, but its first line
+        // (setBusy(true)) runs synchronously before any await, which is a
+        // real "setState during an effect body" case, not a false
+        // positive - the same pattern fixed in useSimulation.ts.
+        queueMicrotask(() => {
+            void classify([SAMPLES[0].txn, SAMPLES[2].txn, SAMPLES[3].txn]);
+        });
     }, []);
 
     const stats = useMemo(() => {

@@ -31,7 +31,7 @@ import { money, moneyShort, pct, share, relativeDays, months as fmtMonths } from
    ═══════════════════════════════════════════════════════════════════ */
 
 export default function Dashboard() {
-    const { runway, score, levers, projection, leaks, payday, portfolio, profile } = useFinancials();
+    const { ready, runway, score, levers, projection, leaks, payday, portfolio, profile } = useFinancials();
 
     // Progressive enhancement: the local point estimate renders instantly;
     // the simulated distribution appears underneath if the backend answers.
@@ -50,6 +50,37 @@ export default function Dashboard() {
         day: 'numeric',
         month: 'long',
     });
+
+    // A profile missing income or essential spending cannot produce a true
+    // runway. The engine's guard returns 0, which renders as "0.0 months ·
+    // critical" — a confident statement that this person is broke, made
+    // about somebody the app knows nothing about. Onboarding should make
+    // this unreachable; it is here because a screen that can state a
+    // falsehood eventually will.
+    if (!ready) {
+        return (
+            <>
+                <PageHeader
+                    eyebrow={today}
+                    title="Overview"
+                    description="Nothing here yet, because nothing has been assumed on your behalf."
+                />
+                <div className="surface p-8 text-center">
+                    <p className="text-[15px] font-semibold text-hi">
+                        Your dashboard needs two numbers to say anything true
+                    </p>
+                    <p className="text-[12.5px] text-lo mt-2 max-w-md mx-auto leading-relaxed">
+                        What comes in each month, and what you must spend. Without both,
+                        every figure on this page would be invented — so the page stays
+                        empty instead.
+                    </p>
+                    <Link to="/onboarding" className="btn btn-primary !py-2.5 mt-6">
+                        Add my numbers <ArrowRight size={14} />
+                    </Link>
+                </div>
+            </>
+        );
+    }
 
     return (
         <>

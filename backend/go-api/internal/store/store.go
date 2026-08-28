@@ -61,22 +61,35 @@ func (s *Store) Ping(ctx context.Context) error {
 }
 
 type User struct {
-	ID           string
-	Email        string
+	ID    string
+	Email string
+	// PasswordHash is empty for a Google-only account, never NULL in Go -
+	// the query COALESCEs it, so every caller can keep treating this as a
+	// plain string (auth.VerifyPassword fails safely, rather than panics,
+	// on an empty/malformed hash) instead of a nullable type rippling
+	// through every place PasswordHash is read.
 	PasswordHash string
-	DisplayName  string
-	CreatedAt    time.Time
+	// GoogleSub is Google's stable per-account identifier, or nil for an
+	// account that has never signed in with Google.
+	GoogleSub   *string
+	DisplayName string
+	CreatedAt   time.Time
+}
+
+const userColumns = `id, email, COALESCE(password_hash, ''), google_sub, display_name, created_at`
+
+func scanUser(row pgx.Row, u *User) error {
+	return row.Scan(&u.ID, &u.Email, &u.PasswordHash, &u.GoogleSub, &u.DisplayName, &u.CreatedAt)
 }
 
 func (s *Store) CreateUser(ctx context.Context, email, hash, name string) (User, error) {
-	const q = `
+	q := `
 		INSERT INTO users (email, password_hash, display_name)
 		VALUES ($1, $2, $3)
-		RETURNING id, email, password_hash, display_name, created_at`
+		RETURNING ` + userColumns
 
 	var u User
-	err := s.pool.QueryRow(ctx, q, email, hash, name).
-		Scan(&u.ID, &u.Email, &u.PasswordHash, &u.DisplayName, &u.CreatedAt)
+	err := scanUser(s.pool.QueryRow(ctx, q, email, hash, name), &u)
 
 	if err != nil {
 		// 23505 = unique_violation. Mapped to a domain error so the HTTP layer
@@ -89,21 +102,91 @@ func (s *Store) CreateUser(ctx context.Context, email, hash, name string) (User,
 	return u, nil
 }
 
-func (s *Store) UserByEmail(ctx context.Context, email string) (User, error) {
-	const q = `
-		SELECT id, email, password_hash, display_name, created_at
-		FROM users
-		WHERE email = $1 AND deleted_at IS NULL`
+// CreateUserGoogle creates a brand-new account for a first-time Google
+// Sign-In - no password at all, not a generated placeholder one, because a
+// generated password nobody knows and nobody can use is not a credential,
+// it is a NOT NULL constraint satisfied by fiction.
+func (s *Store) CreateUserGoogle(ctx context.Context, email, googleSub, name string) (User, error) {
+	q := `
+		INSERT INTO users (email, google_sub, display_name)
+		VALUES ($1, $2, $3)
+		RETURNING ` + userColumns
 
 	var u User
-	err := s.pool.QueryRow(ctx, q, email).
-		Scan(&u.ID, &u.Email, &u.PasswordHash, &u.DisplayName, &u.CreatedAt)
+	err := scanUser(s.pool.QueryRow(ctx, q, email, googleSub, name), &u)
+	if err != nil {
+		if isUniqueViolation(err) {
+			return User{}, ErrDuplicate
+		}
+		return User{}, fmt.Errorf("store: create google user: %w", err)
+	}
+	return u, nil
+}
+
+// LinkGoogleSub attaches a Google identity to an EXISTING account (found by
+// email) that signed up with a password originally. Google having verified
+// the email (checked by the caller before this runs) is what makes this
+// safe - the alternative, two separate accounts sharing one inbox with no
+// connection between their wallets or profile, would be a worse outcome for
+// a real user than an automatic link.
+func (s *Store) LinkGoogleSub(ctx context.Context, userID, googleSub string) (User, error) {
+	q := `
+		UPDATE users SET google_sub = $2
+		WHERE id = $1
+		RETURNING ` + userColumns
+
+	var u User
+	err := scanUser(s.pool.QueryRow(ctx, q, userID, googleSub), &u)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return User{}, ErrNotFound
+	}
+	if err != nil {
+		return User{}, fmt.Errorf("store: link google sub: %w", err)
+	}
+	return u, nil
+}
+
+func (s *Store) UserByEmail(ctx context.Context, email string) (User, error) {
+	q := `SELECT ` + userColumns + ` FROM users WHERE email = $1 AND deleted_at IS NULL`
+
+	var u User
+	err := scanUser(s.pool.QueryRow(ctx, q, email), &u)
 
 	if errors.Is(err, pgx.ErrNoRows) {
 		return User{}, ErrNotFound
 	}
 	if err != nil {
 		return User{}, fmt.Errorf("store: user by email: %w", err)
+	}
+	return u, nil
+}
+
+func (s *Store) UserByID(ctx context.Context, id string) (User, error) {
+	q := `SELECT ` + userColumns + ` FROM users WHERE id = $1 AND deleted_at IS NULL`
+
+	var u User
+	err := scanUser(s.pool.QueryRow(ctx, q, id), &u)
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		return User{}, ErrNotFound
+	}
+	if err != nil {
+		return User{}, fmt.Errorf("store: user by id: %w", err)
+	}
+	return u, nil
+}
+
+func (s *Store) UserByGoogleSub(ctx context.Context, sub string) (User, error) {
+	q := `SELECT ` + userColumns + ` FROM users WHERE google_sub = $1 AND deleted_at IS NULL`
+
+	var u User
+	err := scanUser(s.pool.QueryRow(ctx, q, sub), &u)
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		return User{}, ErrNotFound
+	}
+	if err != nil {
+		return User{}, fmt.Errorf("store: user by google sub: %w", err)
 	}
 	return u, nil
 }

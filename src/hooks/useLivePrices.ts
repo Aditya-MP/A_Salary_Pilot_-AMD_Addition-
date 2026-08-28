@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import { seedProfile } from '../domain/seed';
+import { OPENING_PRICES, ASSET_CLASS_OF } from '../domain/market';
 
 /* ═══════════════════════════════════════════════════════════════════
    Live price feed — one ticker for the whole app.
@@ -17,6 +17,12 @@ import { seedProfile } from '../domain/seed';
 
    3. The effect closed over `changes` with a `[]` dependency array, so
       it read a permanently stale value.
+
+   4. The ticker universe was built from seedProfile.holdings — one
+      fictional user's portfolio. A real user could only be quoted
+      prices for instruments the demo person happened to own, and
+      deleting that fake user would have taken the market with it. The
+      universe now comes from domain/market.ts, where it belongs.
 
    This is a single module-level store driven by one interval, consumed
    through useSyncExternalStore. Every subscriber sees identical prices.
@@ -46,13 +52,8 @@ const VOL: Record<string, number> = {
     retirement: 0.0002,
 };
 
-const OPEN: Record<string, number> = {};
-const CLASS_OF: Record<string, string> = {};
-
-seedProfile.holdings.forEach((h) => {
-    OPEN[h.ticker] = h.price;
-    CLASS_OF[h.ticker] = h.assetClass;
-});
+const OPEN = OPENING_PRICES;
+const CLASS_OF = ASSET_CLASS_OF;
 
 let snapshot: PriceSnapshot = {
     price: { ...OPEN },

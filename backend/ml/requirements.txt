@@ -1,12 +1,19 @@
+# The real dependency surface of this service, verified by parsing every
+# .py file's actual imports rather than assumed — a previous version of
+# this file also listed torch, pandas, mlflow, onnx and onnxruntime, none
+# of which are imported anywhere in the codebase. Harmless on a laptop
+# with disk and bandwidth to spare; a genuine problem in a Docker build on
+# a free-tier hosting platform, where torch alone is a multi-GB download
+# that buys nothing — every model here is hand-implemented on numpy/scipy,
+# on purpose (see PROJECT_REPORT.md).
 numpy>=2.0
 scipy>=1.14
-pandas>=2.2
-torch>=2.4
-mlflow>=2.16
 fastapi>=0.115
 uvicorn[standard]>=0.30
 pydantic>=2.9
-psycopg[binary]>=3.2
-onnx>=1.17
-onnxruntime>=1.19
-pytest>=8.3
+
+# psycopg is not here: this service never touches the database directly —
+# the Go API owns all persistence (see backend/go-api/internal/store).
+
+# Local dev / test only — see requirements-dev.txt, not installed in the
+# production image.

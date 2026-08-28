@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { useFinancials } from '../hooks/useFinancials';
 import { runAgents, type Agent, type Severity } from '../engine/agents';
-import { getFinancialAdvice } from '../services/gemini';
+import { getCoachAdvice } from '../lib/coach';
 import { PageHeader } from '../components/primitives/PageHeader';
 import { Card, CardHead, CardBody } from '../components/primitives/Card';
 import { Badge } from '../components/primitives/Badge';
@@ -40,6 +40,10 @@ const SEV: Record<Severity, { color: string; icon: React.ElementType; label: str
 export default function AICoach() {
     const fin = useFinancials();
     const [advice, setAdvice] = useState<string | null>(null);
+    /** True when `advice` is an explanation of why there's no real answer,
+        not an actual model response — so the UI doesn't caption a failure
+        message as "generated from your live figures". */
+    const [adviceFailed, setAdviceFailed] = useState(false);
     const [loading, setLoading] = useState(false);
     const [open, setOpen] = useState<string | null>(null);
 
@@ -78,7 +82,20 @@ export default function AICoach() {
             `Highest-rate debt: ${fin.profile.debts[0] ? `${share(fin.profile.debts[0].rate * 100)} on ${money(fin.profile.debts[0].balance)}` : 'none'}.`,
             `Unused tax deductions worth ${money(fin.headroom.totalWorth)}.`,
         ].join(' ');
-        setAdvice(await getFinancialAdvice(ctx));
+
+        const res = await getCoachAdvice(ctx);
+        if (res.ok) {
+            setAdvice(res.data.advice);
+            setAdviceFailed(false);
+        } else {
+            // The server tells the difference between "not configured" and
+            // "reachable but failed" in its error text; either way, the six
+            // agents below already computed real findings from these same
+            // numbers with no external call at all, so this is a soft
+            // failure, not a broken page.
+            setAdvice(res.error || 'Could not reach the AI coach right now.');
+            setAdviceFailed(true);
+        }
         setLoading(false);
     };
 
@@ -130,17 +147,22 @@ export default function AICoach() {
                             <CardBody className="flex items-start gap-3.5">
                                 <div
                                     className="w-9 h-9 rounded-[var(--r-md)] grid place-items-center shrink-0"
-                                    style={{ background: 'var(--info-dim)', border: '1px solid rgba(56,189,248,0.25)' }}
+                                    style={{
+                                        background: adviceFailed ? 'var(--warn-dim)' : 'var(--info-dim)',
+                                        border: `1px solid ${adviceFailed ? 'rgba(255,176,32,0.25)' : 'rgba(56,189,248,0.25)'}`,
+                                    }}
                                 >
-                                    <Sparkles size={17} style={{ color: 'var(--info)' }} />
+                                    <Sparkles size={17} style={{ color: adviceFailed ? 'var(--warn)' : 'var(--info)' }} />
                                 </div>
                                 <div className="min-w-0">
-                                    <p className="label mb-1">Live model insight</p>
+                                    <p className="label mb-1">{adviceFailed ? 'AI coach unavailable' : 'Live model insight'}</p>
                                     <p className="text-[13px] text-mid leading-relaxed">{advice}</p>
-                                    <p className="text-[10.5px] text-faint mt-2">
-                                        Generated from your live figures. Treat as a second opinion, not
-                                        instruction — the agents below show their working, this does not.
-                                    </p>
+                                    {!adviceFailed && (
+                                        <p className="text-[10.5px] text-faint mt-2">
+                                            Generated from your live figures. Treat as a second opinion, not
+                                            instruction — the agents below show their working, this does not.
+                                        </p>
+                                    )}
                                 </div>
                             </CardBody>
                         </Card>

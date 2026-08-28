@@ -59,6 +59,30 @@ func (c *Client) Healthy(ctx context.Context) bool {
 	return resp.StatusCode == http.StatusOK
 }
 
+func (c *Client) get(ctx context.Context, path string, out any) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+path, nil)
+	if err != nil {
+		return fmt.Errorf("mlclient: request: %w", err)
+	}
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return fmt.Errorf("%w: %v", ErrUnavailable, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		msg, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
+		return fmt.Errorf("mlclient: %s returned %d: %s", path, resp.StatusCode, msg)
+	}
+
+	dec := json.NewDecoder(io.LimitReader(resp.Body, 4<<20))
+	if err := dec.Decode(out); err != nil {
+		return fmt.Errorf("mlclient: decode %s: %w", path, err)
+	}
+	return nil
+}
+
 func (c *Client) post(ctx context.Context, path string, in, out any) error {
 	body, err := json.Marshal(in)
 	if err != nil {
@@ -167,4 +191,59 @@ func (c *Client) Simulate(ctx context.Context, req SimulateRequest) (*SimulateRe
 	var out SimulateResponse
 	err := c.post(ctx, "/v1/simulate", req, &out)
 	return &out, err
+}
+
+// ── M5 · allocate ───────────────────────────────────────────────────────
+
+type AllocateRequest struct {
+	RiskProfile string `json:"risk_profile"`
+}
+
+// AllocateResponse deliberately carries the model's own caveat and evidence
+// through to the caller. M5 reduces volatility and drawdown but earned LESS
+// than equal weight in evaluation; a client that receives only the weights
+// could present this as a way to make more money, which it is not.
+type AllocateResponse struct {
+	ModelVersion string             `json:"model_version"`
+	RiskProfile  string             `json:"risk_profile"`
+	GrowthTilt   float64            `json:"growth_tilt"`
+	Weights      map[string]float64 `json:"weights"`
+	ExpectedVol  float64            `json:"expected_annual_volatility"`
+	EqualVol     float64            `json:"equal_weight_volatility"`
+	MaxWeight    float64            `json:"max_single_asset_weight"`
+	Evidence     map[string]any     `json:"evidence"`
+	Caveat       string             `json:"caveat"`
+	// Present only when real market conditions have inverted the usual
+	// risk ordering. A pointer, not a bare string: without one, Go's JSON
+	// encoder would round-trip Python's `null` as an empty string, which
+	// the frontend cannot tell apart from "there is no note" - it would
+	// render a blank warning banner instead of nothing at all.
+	OrderingNote *string `json:"ordering_note"`
+	LatencyMS    float64 `json:"latency_ms"`
+}
+
+func (c *Client) Allocate(ctx context.Context, req AllocateRequest) (*AllocateResponse, error) {
+	var out AllocateResponse
+	if err := c.post(ctx, "/v1/allocate", req, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// ── M8 · screen ─────────────────────────────────────────────────────────
+
+// ScreenResponse deliberately loose (map[string]any): its shape changes
+// between "not enabled" (reason only) and "enabled" (full evaluation +
+// picks), and forcing one Go struct to cover both would mean either two
+// types or a pile of omitempty fields. The frontend already treats this
+// endpoint's shape as data to branch on, not a fixed contract - see the
+// Screener page.
+type ScreenResponse = map[string]any
+
+func (c *Client) Screen(ctx context.Context) (ScreenResponse, error) {
+	var out ScreenResponse
+	if err := c.get(ctx, "/v1/screen", &out); err != nil {
+		return nil, err
+	}
+	return out, nil
 }

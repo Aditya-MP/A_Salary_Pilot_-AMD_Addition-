@@ -5,8 +5,10 @@ SalaryPilot ML service.
 
 Serves the models the Go API calls. Two endpoints matter today:
 
-    POST /v1/categorise   M1-v2  narration -> spending category + confidence
-    POST /v1/simulate     M6     profile   -> distribution of outcomes
+    POST /v1/categorise   M1-v2  narration    -> spending category + confidence
+    POST /v1/simulate     M6     profile      -> distribution of outcomes
+    POST /v1/allocate     M5     risk profile -> asset-class weights + evidence
+    GET  /v1/screen        M8     real Nifty 500 momentum/low-vol basket + evidence
 
 Design decisions worth stating:
 
@@ -33,7 +35,9 @@ from pydantic import BaseModel, Field
 
 from salarypilot_ml.models.garch import simulate as garch_simulate
 from salarypilot_ml.models.simulate import Scenario, simulate_paths
+from service.allocate import allocate as m5_allocate
 from service.registry import get_categoriser
+from service.screener import get_screener
 
 START = time.time()
 
@@ -194,3 +198,41 @@ def simulate(req: SimulateRequest) -> dict:
         "model_version": "m6_block_bootstrap_v1",
         "latency_ms": round((time.time() - t0) * 1000, 2),
     }
+
+
+# ── M5 · allocate ───────────────────────────────────────────────────────
+
+class AllocateRequest(BaseModel):
+    risk_profile: str = Field("balanced", pattern="^(conservative|balanced|aggressive)$")
+
+
+@app.post("/v1/allocate")
+def allocate(req: AllocateRequest) -> dict:
+    """
+    Asset-class weights for someone who does not want to pick investments.
+
+    Returns the evidence alongside the weights - including the fact that this
+    strategy earned LESS than equal weight in evaluation. A recommendation
+    endpoint that reports only its wins is how users get hurt.
+    """
+    t0 = time.time()
+    try:
+        out = m5_allocate(req.risk_profile)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    out["latency_ms"] = round((time.time() - t0) * 1000, 2)
+    return out
+
+
+# ── M8 · screen ─────────────────────────────────────────────────────────
+
+@app.get("/v1/screen")
+def screen() -> dict:
+    """
+    Real, currently-listed Nifty 500 companies, ranked by a momentum +
+    low-volatility factor score, with the walk-forward evaluation that
+    decided whether this ships. Returns `enabled: false` with the reason
+    rather than a ranking, if the model was not trained or did not beat
+    the real index in evaluation - see service/screener.py.
+    """
+    return get_screener().summary()

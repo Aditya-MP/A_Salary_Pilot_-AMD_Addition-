@@ -1,24 +1,33 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, ShieldCheck, ArrowRight } from 'lucide-react';
-import { useAppStore } from '../store/useAppStore';
+import { Link, useNavigate, Navigate } from 'react-router-dom';
+import { Eye, EyeOff, ShieldCheck, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
+import { useAuthStore } from '../store/useAuthStore';
+import { GoogleSignInButton } from '../components/GoogleSignInButton';
+
+// Same check GoogleSignInButton makes internally - kept in sync here so the
+// "or continue with" divider and the button appear or disappear together.
+const GOOGLE_CONFIGURED = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID);
 
 /* ═══════════════════════════════════════════════════════════════════
-   Auth page — UI only.
+   Auth page.
 
-   As instructed, the sign-in logic is untouched: submitting still calls
-   completeOnboarding() and navigates straight to the dashboard with no
-   credential check. That is the existing test harness and it stays.
-   Everything below the logic line is presentation.
+   The bypass is gone. Submitting used to call completeOnboarding() and
+   navigate to the dashboard without looking at what was typed — fine as
+   a test harness, fatal for an app that now stores one person's salary,
+   debts and wallet balance under their own account. Credentials go to
+   the API, and the session that comes back is what unlocks the app.
 
-   What changed visually:
-   • Three stacked full-screen canvas/SVG animations (a 45-node network
-     with an O(n²) distance loop on every frame, a pulsing shield, and
-     five sweeping gradient lines) became one lightweight particle
-     field. The old set repainted continuously behind a static form.
-   • The form is now a real form: labelled inputs, a working password
-     reveal, autocomplete hints, and a visible focus ring.
+   Two things that are deliberately NOT here:
+
+   • The social sign-in row. Three buttons that did nothing when clicked
+     is a worse first impression than not offering them. They come back
+     when there is an OAuth provider behind them.
+
+   • "Any credentials will sign you in." It is no longer true.
+
+   The visual work is unchanged: one lightweight particle field instead
+   of three stacked full-screen canvases, and a real labelled form.
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ─── Ambient particle field ───────────────────────────────────────
@@ -89,19 +98,33 @@ function ParticleField() {
     return <canvas ref={ref} className="absolute inset-0 w-full h-full" aria-hidden />;
 }
 
-/* ─── Field ─── */
+/* ─── Field ───────────────────────────────────────────────────────
+   Controlled now. The old version had no value or onChange at all, so
+   what the user typed lived only in the DOM and was unreachable by the
+   submit handler — which is why the bypass was the only thing it could
+   possibly have done. */
 function Field({
     label,
     type,
     placeholder,
     autoComplete,
     name,
+    value,
+    onChange,
+    hint,
+    required = true,
+    minLength,
 }: {
     label: string;
     type: string;
     placeholder: string;
     autoComplete?: string;
     name: string;
+    value: string;
+    onChange: (v: string) => void;
+    hint?: string;
+    required?: boolean;
+    minLength?: number;
 }) {
     const [show, setShow] = useState(false);
     const isPassword = type === 'password';
@@ -118,13 +141,17 @@ function Field({
                     type={isPassword && show ? 'text' : type}
                     placeholder={placeholder}
                     autoComplete={autoComplete}
+                    value={value}
+                    required={required}
+                    minLength={minLength}
+                    onChange={(e) => onChange(e.target.value)}
                     className="field !py-3"
                     style={isPassword ? { paddingRight: 44 } : undefined}
                 />
                 {isPassword && (
                     <button
                         type="button"
-                        onClick={() => setShow((s) => !s)}
+                        onClick={() => setShow((v) => !v)}
                         className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-[var(--r-sm)] text-faint hover:text-hi transition-colors"
                         aria-label={show ? 'Hide password' : 'Show password'}
                     >
@@ -132,25 +159,58 @@ function Field({
                     </button>
                 )}
             </div>
+            {hint && <p className="text-[11px] text-faint mt-1.5">{hint}</p>}
         </div>
     );
 }
 
 /* ═══════════════════════════ Page ═══════════════════════════ */
 
+const MIN_PASSWORD = 12; // matches the server; NIST SP 800-63B length-only
+
 export default function AuthPage() {
     const [isLogin, setIsLogin] = useState(true);
+    const [name, setName] = useState('');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const navigate = useNavigate();
 
-    /* ── UNCHANGED: existing test-mode sign-in ── */
-    const handleSubmit = (e: React.FormEvent) => {
+    const status = useAuthStore((s) => s.status);
+    const busy = useAuthStore((s) => s.busy);
+    const error = useAuthStore((s) => s.error);
+    const signIn = useAuthStore((s) => s.signIn);
+    const signUp = useAuthStore((s) => s.signUp);
+    const signInWithGoogle = useAuthStore((s) => s.signInWithGoogle);
+    const clearError = useAuthStore((s) => s.clearError);
+
+    // Clear a stale error when switching mode, so "email or password is
+    // incorrect" does not sit above a fresh sign-up form.
+    useEffect(() => {
+        clearError();
+    }, [isLogin, clearError]);
+
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const completeOnboarding = useAppStore.getState().completeOnboarding;
-        completeOnboarding();
-        setTimeout(() => {
-            navigate('/dashboard');
-        }, 100);
+        if (busy) return; // a double-submit would be a second POST
+
+        const ok = isLogin
+            ? await signIn(email.trim(), password)
+            : await signUp(email.trim(), password, name.trim());
+
+        // Only navigate on success. The old handler navigated
+        // unconditionally, which is precisely what made it a bypass.
+        if (ok) navigate('/dashboard', { replace: true });
     };
+
+    const handleGoogleToken = async (idToken: string) => {
+        if (busy) return;
+        const ok = await signInWithGoogle(idToken);
+        if (ok) navigate('/dashboard', { replace: true });
+    };
+
+    // Already signed in — nothing here to do. `replace` keeps Back from
+    // bouncing between the dashboard and a login page it cannot show.
+    if (status === 'authenticated') return <Navigate to="/dashboard" replace />;
 
     return (
         <div
@@ -244,6 +304,26 @@ export default function AuthPage() {
                             : 'Two minutes to your first runway figure.'}
                     </p>
 
+                    {/* The server is the only thing that can reject a
+                        credential, so its message is what is shown. */}
+                    {error && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            role="alert"
+                            className="flex items-start gap-2.5 mt-6 p-3 rounded-[var(--r-md)]"
+                            style={{
+                                background: 'rgba(255,86,86,0.08)',
+                                border: '1px solid rgba(255,86,86,0.22)',
+                            }}
+                        >
+                            <AlertCircle size={15} className="shrink-0 mt-[1px]" style={{ color: 'var(--neg)' }} />
+                            <p className="text-[12.5px] leading-relaxed" style={{ color: 'var(--neg)' }}>
+                                {error}
+                            </p>
+                        </motion.div>
+                    )}
+
                     <form onSubmit={handleSubmit} className="mt-7 space-y-4">
                         <AnimatePresence initial={false}>
                             {!isLogin && (
@@ -261,6 +341,9 @@ export default function AuthPage() {
                                             type="text"
                                             placeholder="Aditya Menon"
                                             autoComplete="name"
+                                            value={name}
+                                            onChange={setName}
+                                            required={false}
                                         />
                                     </div>
                                 </motion.div>
@@ -273,6 +356,8 @@ export default function AuthPage() {
                             type="email"
                             placeholder="you@company.com"
                             autoComplete="email"
+                            value={email}
+                            onChange={setEmail}
                         />
                         <Field
                             label="Password"
@@ -280,6 +365,14 @@ export default function AuthPage() {
                             type="password"
                             placeholder="••••••••"
                             autoComplete={isLogin ? 'current-password' : 'new-password'}
+                            value={password}
+                            onChange={setPassword}
+                            minLength={isLogin ? undefined : MIN_PASSWORD}
+                            hint={
+                                isLogin
+                                    ? undefined
+                                    : `At least ${MIN_PASSWORD} characters. Length beats symbols — a passphrase is fine.`
+                            }
                         />
 
                         {isLogin && (
@@ -290,63 +383,44 @@ export default function AuthPage() {
                             </div>
                         )}
 
-                        <button type="submit" className="btn btn-primary w-full !py-3">
-                            {isLogin ? 'Sign in' : 'Create account'} <ArrowRight size={15} />
+                        <button
+                            type="submit"
+                            disabled={busy}
+                            className="btn btn-primary w-full !py-3 disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                            {busy ? (
+                                <>
+                                    <Loader2 size={15} className="animate-spin" />
+                                    {isLogin ? 'Signing in' : 'Creating account'}
+                                </>
+                            ) : (
+                                <>
+                                    {isLogin ? 'Sign in' : 'Create account'} <ArrowRight size={15} />
+                                </>
+                            )}
                         </button>
                     </form>
 
-                    {/* Divider */}
-                    <div className="relative my-6">
-                        <div className="absolute inset-0 flex items-center">
-                            <div className="w-full" style={{ borderTop: '1px solid var(--line-subtle)' }} />
-                        </div>
-                        <div className="relative flex justify-center">
-                            <span className="px-3 label" style={{ background: 'var(--bg-void)' }}>
-                                or continue with
-                            </span>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-2.5">
-                        {[
-                            {
-                                label: 'Google',
-                                svg: (
-                                    <svg className="w-4 h-4" viewBox="0 0 24 24">
-                                        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4" />
-                                        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                                        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-                                        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-                                    </svg>
-                                ),
-                            },
-                            {
-                                label: 'Apple',
-                                svg: (
-                                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                                        <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
-                                    </svg>
-                                ),
-                            },
-                            {
-                                label: 'GitHub',
-                                svg: (
-                                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                                        <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
-                                    </svg>
-                                ),
-                            },
-                        ].map((p) => (
-                            <button
-                                key={p.label}
-                                type="button"
-                                aria-label={`Continue with ${p.label}`}
-                                className="btn btn-secondary !py-2.5 text-lo hover:text-hi"
-                            >
-                                {p.svg}
-                            </button>
-                        ))}
-                    </div>
+                    {/* The SAME check GoogleSignInButton makes internally,
+                        checked again here — deliberately, so the divider
+                        and the button appear or disappear together. An "or
+                        continue with" line above an empty space (Google not
+                        configured) would be worse than showing neither. */}
+                    {GOOGLE_CONFIGURED && (
+                        <>
+                            <div className="relative my-6">
+                                <div className="absolute inset-0 flex items-center">
+                                    <div className="w-full" style={{ borderTop: '1px solid var(--line-subtle)' }} />
+                                </div>
+                                <div className="relative flex justify-center">
+                                    <span className="px-3 label" style={{ background: 'var(--bg-void)' }}>
+                                        or continue with
+                                    </span>
+                                </div>
+                            </div>
+                            <GoogleSignInButton onToken={(t) => void handleGoogleToken(t)} disabled={busy} />
+                        </>
+                    )}
 
                     <p className="text-[13px] text-lo text-center mt-7">
                         {isLogin ? "Don't have an account?" : 'Already have an account?'}{' '}
@@ -364,7 +438,7 @@ export default function AuthPage() {
                     >
                         <ShieldCheck size={13} className="text-faint" />
                         <p className="text-[11px] text-faint">
-                            Demo build — any credentials will sign you in
+                            Passwords hashed with argon2id. Wallet money is simulated.
                         </p>
                     </div>
                 </motion.div>

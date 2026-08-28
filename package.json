@@ -5,12 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:all": "concurrently -n web,api,ml -c blue,green,yellow --kill-others \"npm:dev\" \"cd backend/go-api && cross-env ADDR=:8087 go run ./cmd/server\" \"cd backend/ml && python -m uvicorn service.app:app --port 8000\"",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.24.1",
     "clsx": "^2.1.1",
     "framer-motion": "^12.34.0",
     "lucide-react": "^0.563.0",
@@ -28,6 +28,8 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
     "autoprefixer": "^10.4.24",
+    "concurrently": "^10.0.5",
+    "cross-env": "^10.1.0",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",

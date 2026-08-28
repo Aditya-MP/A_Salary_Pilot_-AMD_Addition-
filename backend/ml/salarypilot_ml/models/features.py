@@ -170,12 +170,31 @@ class BehaviouralFeatures:
         return len(FEATURE_NAMES)
 
 
+# Measured directly against the real training corpus, not guessed: the
+# standardised behavioural block's average row L2 norm is ~4.5, against
+# text's exact 1.0 (text rows are explicitly L2-normalised in
+# CharNGramTfidf.transform). 1/4.5 rescales behavioural rows to match.
+#
+# THE BUG THIS FIXES
+# ---------------------
+# This module's own combine() docstring used to claim the two blocks "end up
+# on comparable scales" - they measurably did not, by roughly 4.5x on raw
+# feature magnitude and, because a linear classifier can concentrate a fixed
+# "explanatory budget" into few large weights more easily than many small
+# ones under the same L2 penalty, more like 10x on ACTUAL LEARNED LOGIT
+# CONTRIBUTION once trained. Traced on a real failing prediction: for a
+# genuine training-set example ("NOBROKER RENT", a rent payment), the 9360
+# character n-gram TEXT features correctly preferred "housing" over
+# "transfer" (+2.2 net) - the text signal was right. But the 27 BEHAVIOURAL
+# features (amount, channel, day-of-month, and so on) contributed +14.2 net
+# toward "transfer" regardless, completely overriding a correct text read,
+# with 99.9999% confidence in the wrong answer.
+BEHAVIOURAL_SCALE = 0.22
+
+
 def combine(tfidf: sparse.csr_matrix, behavioural: sparse.csr_matrix) -> sparse.csr_matrix:
     """
-    Concatenate the text block and the behavioural block.
-
-    The TF-IDF rows are L2-normalised so each contributes unit length, while
-    the behavioural block is standardised. They end up on comparable scales,
-    which matters because a single shared L2 penalty is applied across both.
+    Concatenate the text block and the behavioural block, after rescaling
+    behavioural to match text's row norm - see BEHAVIOURAL_SCALE.
     """
-    return sparse.hstack([tfidf, behavioural], format="csr")
+    return sparse.hstack([tfidf, behavioural * BEHAVIOURAL_SCALE], format="csr")

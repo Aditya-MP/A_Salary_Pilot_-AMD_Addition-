@@ -1,0 +1,15 @@
+# The Dockerfile fetches fresh data and regenerates these during the build
+# (see the RUN steps) — shipping the locally-fetched, possibly-stale copies
+# in the build context would be redundant at best and misleading at worst.
+data_cache/
+artifacts/*.json
+
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+
+.git/
+.gitignore

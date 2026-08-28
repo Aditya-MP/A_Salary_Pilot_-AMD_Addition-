@@ -18,41 +18,13 @@
       be coerced to 0 and rendered as a year.
    ═══════════════════════════════════════════════════════════════════ */
 
+import { authed } from './session';
+
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8087';
 
 export type Result<T> =
     | { ok: true; data: T }
     | { ok: false; error: string; offline: boolean };
-
-async function post<T>(path: string, body: unknown, timeoutMs = 12_000): Promise<Result<T>> {
-    // AbortController rather than Promise.race: race leaves the fetch
-    // running in the background, so a slow backend accumulates connections
-    // nobody is waiting for.
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
-
-    try {
-        const res = await fetch(BASE + path, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body),
-            signal: ctrl.signal,
-        });
-
-        if (!res.ok) {
-            const text = await res.text().catch(() => '');
-            return { ok: false, error: text || `HTTP ${res.status}`, offline: false };
-        }
-        return { ok: true, data: (await res.json()) as T };
-    } catch (err) {
-        // A network failure and an abort are both "the backend is not
-        // answering" from the user's point of view.
-        const offline = err instanceof TypeError || (err as Error)?.name === 'AbortError';
-        return { ok: false, error: (err as Error)?.message ?? 'request failed', offline };
-    } finally {
-        clearTimeout(timer);
-    }
-}
 
 export async function health(): Promise<boolean> {
     try {
@@ -92,7 +64,17 @@ export interface CategoriseResponse {
 }
 
 export function categorise(transactions: TxnInput[]) {
-    return post<CategoriseResponse>('/v1/categorise', { transactions });
+    // Goes through authed(), not the local post() above - this endpoint is
+    // gated behind login server-side (see internal/rpc/server.go), because
+    // an unauthenticated categorisation/simulation endpoint on a hosted
+    // deployment is just free compute for anyone who finds the URL. Every
+    // caller of this function already runs on a page the route guard in
+    // App.tsx has already put behind a signed-in session, so this costs
+    // nothing in practice and closes a real gap.
+    return authed<CategoriseResponse>('/v1/categorise', {
+        method: 'POST',
+        body: JSON.stringify({ transactions }),
+    });
 }
 
 /* ─── M6 · simulate ───────────────────────────────────────────────── */
@@ -129,7 +111,9 @@ export interface SimulateResponse {
 }
 
 export function simulate(input: SimulateInput) {
-    // 10k paths take ~500ms server-side, so the timeout has real headroom
-    // over the p99 rather than sitting just above the happy path.
-    return post<SimulateResponse>('/v1/simulate', input, 20_000);
+    // Also gated server-side now - see the note on categorise() above.
+    return authed<SimulateResponse>('/v1/simulate', {
+        method: 'POST',
+        body: JSON.stringify(input),
+    }, 20_000);
 }

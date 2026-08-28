@@ -1,0 +1,805 @@
+{
+  "model": "m8_screener",
+  "model_version": "m8-momentum-lowvol-v1",
+  "evaluated_at": "2026-08-26T17:38:20",
+  "as_of_date": "2026-08-26",
+  "data_source": "real Nifty 500 constituent list (NSE) + real daily closing prices (Yahoo Finance NSE feed)",
+  "universe_size": 421,
+  "n_quarters": 15,
+  "quarters": [
+    "2022-09-30",
+    "2023-01-03",
+    "2023-04-06",
+    "2023-07-10",
+    "2023-10-10",
+    "2024-01-12",
+    "2024-04-22",
+    "2024-07-24",
+    "2024-10-23",
+    "2025-01-24",
+    "2025-05-02",
+    "2025-07-30",
+    "2025-10-31",
+    "2026-02-04",
+    "2026-05-12"
+  ],
+  "top_quintile": {
+    "annual_return": 0.2492459399558586,
+    "annual_vol": 0.18372521249489168,
+    "sharpe": 1.3566234953343088,
+    "max_drawdown": -0.08462296002333754
+  },
+  "nifty500_index": {
+    "annual_return": 0.13388734459399915,
+    "annual_vol": 0.1253007615394382,
+    "sharpe": 1.068527780270979,
+    "max_drawdown": -0.06991481266437984
+  },
+  "hit_rate": 0.6666666666666666,
+  "quarterly_returns": {
+    "tilt": [
+      0.06872121680493348,
+      -0.025513297657380977,
+      0.19981674135012692,
+      0.14045937655707608,
+      0.1884683628925364,
+      0.08451395017799841,
+      0.2175329640808089,
+      0.042272786793105595,
+      -0.08462296002333759,
+      0.0033052040623289774,
+      0.0899563359250349,
+      0.013011057767793674,
+      -0.011005815151103845,
+      -0.040837235960526415,
+      0.048593587215075264
+    ],
+    "index": [
+      0.049122194465762714,
+      -0.051331140611179826,
+      0.12158855364381105,
+      0.04528276731103231,
+      0.1411431922219719,
+      0.041996698829357415,
+      0.11405184747040686,
+      -0.003505433212716458,
+      -0.06664299200924728,
+      0.032229598937342674,
+      0.04669411893347264,
+      0.029385378563776543,
+      -0.00739975576052998,
+      -0.05247722511085995,
+      0.06193973855509616
+    ]
+  },
+  "picks_last_quarter": [
+    "PFOCUS.NS",
+    "ANANDRATHI.NS",
+    "MCX.NS",
+    "GVT&D.NS",
+    "DELHIVERY.NS",
+    "RBLBANK.NS",
+    "NATIONALUM.NS",
+    "ANURAS.NS",
+    "LAURUSLABS.NS",
+    "FORCEMOT.NS",
+    "AUBANK.NS",
+    "ABCAPITAL.NS",
+    "CCL.NS",
+    "CUMMINSIND.NS",
+    "BSE.NS",
+    "TITAN.NS",
+    "TORNTPHARM.NS",
+    "STARHEALTH.NS",
+    "SBILIFE.NS",
+    "MARICO.NS",
+    "TVSMOTOR.NS",
+    "NYKAA.NS",
+    "APOLLOHOSP.NS",
+    "BEL.NS",
+    "GLENMARK.NS",
+    "FEDERALBNK.NS",
+    "LUPIN.NS",
+    "MFSL.NS",
+    "LTF.NS",
+    "CANBK.NS",
+    "KIRLOSENG.NS",
+    "ASTERDM.NS",
+    "NESTLEIND.NS",
+    "ADANIPOWER.NS",
+    "POWERINDIA.NS",
+    "BRITANNIA.NS",
+    "INDIANB.NS",
+    "BHARTIARTL.NS",
+    "BHARATFORG.NS",
+    "SBIN.NS",
+    "PFIZER.NS",
+    "GESHIP.NS",
+    "BAJAJ-AUTO.NS",
+    "HEROMOTOCO.NS",
+    "CASTROLIND.NS",
+    "ICICIGI.NS",
+    "INDUSTOWER.NS",
+    "HINDALCO.NS",
+    "FORTIS.NS",
+    "KEI.NS",
+    "MRF.NS",
+    "NTPC.NS",
+    "TATASTEEL.NS",
+    "ACUTAAS.NS",
+    "DIVISLAB.NS",
+    "ZYDUSLIFE.NS",
+    "APLAPOLLO.NS",
+    "MARUTI.NS",
+    "RELIANCE.NS",
+    "EICHERMOT.NS",
+    "POWERGRID.NS",
+    "ONGC.NS",
+    "AXISBANK.NS",
+    "CANFINHOME.NS",
+    "POLYCAB.NS",
+    "TATACONSUM.NS",
+    "GMDCLTD.NS",
+    "SAIL.NS",
+    "ALKEM.NS",
+    "SUNPHARMA.NS",
+    "KARURVYSYA.NS",
+    "GRANULES.NS",
+    "BAYERCROP.NS",
+    "ICICIBANK.NS",
+    "JINDALSTEL.NS",
+    "TATAPOWER.NS",
+    "GRASIM.NS",
+    "AUROPHARMA.NS",
+    "ASHOKLEY.NS",
+    "GPIL.NS",
+    "TIMKEN.NS",
+    "HINDUNILVR.NS",
+    "DATAPATTNS.NS",
+    "JSWSTEEL.NS"
+  ],
+  "current_picks": [
+    {
+      "ticker": "LAURUSLABS",
+      "name": "Laurus Labs Ltd.",
+      "industry": "Healthcare",
+      "composite_score": 2.1396,
+      "momentum_12m_ex_1m": 1.1684,
+      "annualised_volatility": 0.3129
+    },
+    {
+      "ticker": "FEDERALBNK",
+      "name": "Federal Bank Ltd.",
+      "industry": "Financial Services",
+      "composite_score": 1.5924,
+      "momentum_12m_ex_1m": 0.6894,
+      "annualised_volatility": 0.2663
+    },
+    {
+      "ticker": "BHARATFORG",
+      "name": "Bharat Forge Ltd.",
+      "industry": "Automobile and Auto Components",
+      "composite_score": 1.4391,
+      "momentum_12m_ex_1m": 0.7729,
+      "annualised_volatility": 0.3211
+    },
+    {
+      "ticker": "GRANULES",
+      "name": "Granules India Ltd.",
+      "industry": "Healthcare",
+      "composite_score": 1.4259,
+      "momentum_12m_ex_1m": 0.6755,
+      "annualised_volatility": 0.2932
+    },
+    {
+      "ticker": "KIRLOSENG",
+      "name": "Kirloskar Oil Eng Ltd.",
+      "industry": "Capital Goods",
+      "composite_score": 1.352,
+      "momentum_12m_ex_1m": 1.3248,
+      "annualised_volatility": 0.5094
+    },
+    {
+      "ticker": "ADANIENSOL",
+      "name": "Adani Energy Solutions Ltd.",
+      "industry": "Power",
+      "composite_score": 1.2987,
+      "momentum_12m_ex_1m": 0.9097,
+      "annualised_volatility": 0.3901
+    },
+    {
+      "ticker": "ADANIPOWER",
+      "name": "Adani Power Ltd.",
+      "industry": "Power",
+      "composite_score": 1.2788,
+      "momentum_12m_ex_1m": 0.7499,
+      "annualised_volatility": 0.344
+    },
+    {
+      "ticker": "TORNTPHARM",
+      "name": "Torrent Pharmaceuticals Ltd.",
+      "industry": "Healthcare",
+      "composite_score": 1.2518,
+      "momentum_12m_ex_1m": 0.392,
+      "annualised_volatility": 0.2376
+    },
+    {
+      "ticker": "APOLLOHOSP",
+      "name": "Apollo Hospitals Enterprise Ltd.",
+      "industry": "Healthcare",
+      "composite_score": 1.2111,
+      "momentum_12m_ex_1m": 0.2156,
+      "annualised_volatility": 0.1903
+    },
+    {
+      "ticker": "MARICO",
+      "name": "Marico Ltd.",
+      "industry": "Fast Moving Consumer Goods",
+      "composite_score": 1.1883,
+      "momentum_12m_ex_1m": 0.1983,
+      "annualised_volatility": 0.1891
+    },
+    {
+      "ticker": "LUPIN",
+      "name": "Lupin Ltd.",
+      "industry": "Healthcare",
+      "composite_score": 1.1493,
+      "momentum_12m_ex_1m": 0.2512,
+      "annualised_volatility": 0.2129
+    },
+    {
+      "ticker": "RADICO",
+      "name": "Radico Khaitan Ltd",
+      "industry": "Fast Moving Consumer Goods",
+      "composite_score": 1.1427,
+      "momentum_12m_ex_1m": 0.5975,
+      "annualised_volatility": 0.3221
+    },
+    {
+      "ticker": "AUROPHARMA",
+      "name": "Aurobindo Pharma Ltd.",
+      "industry": "Healthcare",
+      "composite_score": 1.1371,
+      "momentum_12m_ex_1m": 0.3782,
+      "annualised_volatility": 0.2548
+    },
+    {
+      "ticker": "TITAN",
+      "name": "Titan Company Ltd.",
+      "industry": "Consumer Durables",
+      "composite_score": 1.0983,
+      "momentum_12m_ex_1m": 0.4127,
+      "annualised_volatility": 0.2728
+    },
+    {
+      "ticker": "HFCL",
+      "name": "HFCL Ltd.",
+      "industry": "Telecommunication",
+      "composite_score": 1.0917,
+      "momentum_12m_ex_1m": 1.3431,
+      "annualised_volatility": 0.5639
+    },
+    {
+      "ticker": "NESTLEIND",
+      "name": "Nestle India Ltd.",
+      "industry": "Fast Moving Consumer Goods",
+      "composite_score": 1.0599,
+      "momentum_12m_ex_1m": 0.2276,
+      "annualised_volatility": 0.2224
+    },
+    {
+      "ticker": "SUNPHARMA",
+      "name": "Sun Pharmaceutical Industries Ltd.",
+      "industry": "Healthcare",
+      "composite_score": 1.0424,
+      "momentum_12m_ex_1m": 0.1682,
+      "annualised_volatility": 0.2071
+    },
+    {
+      "ticker": "BAJAJ-AUTO",
+      "name": "Bajaj Auto Ltd.",
+      "industry": "Automobile and Auto Components",
+      "composite_score": 1.032,
+      "momentum_12m_ex_1m": 0.3611,
+      "annualised_volatility": 0.2692
+    },
+    {
+      "ticker": "HINDALCO",
+      "name": "Hindalco Industries Ltd.",
+      "industry": "Metals & Mining",
+      "composite_score": 0.9839,
+      "momentum_12m_ex_1m": 0.4268,
+      "annualised_volatility": 0.2987
+    },
+    {
+      "ticker": "MCX",
+      "name": "Multi Commodity Exchange of India Ltd.",
+      "industry": "Financial Services",
+      "composite_score": 0.9773,
+      "momentum_12m_ex_1m": 0.6451,
+      "annualised_volatility": 0.3679
+    },
+    {
+      "ticker": "CUMMINSIND",
+      "name": "Cummins India Ltd.",
+      "industry": "Capital Goods",
+      "composite_score": 0.9728,
+      "momentum_12m_ex_1m": 0.5016,
+      "annualised_volatility": 0.324
+    },
+    {
+      "ticker": "ASTERDM",
+      "name": "Aster DM Quality Care Ltd.",
+      "industry": "Healthcare",
+      "composite_score": 0.9487,
+      "momentum_12m_ex_1m": 0.3769,
+      "annualised_volatility": 0.2897
+    },
+    {
+      "ticker": "NATIONALUM",
+      "name": "National Aluminium Co. Ltd.",
+      "industry": "Metals & Mining",
+      "composite_score": 0.9369,
+      "momentum_12m_ex_1m": 0.8227,
+      "annualised_volatility": 0.4308
+    },
+    {
+      "ticker": "JSWSTEEL",
+      "name": "JSW Steel Ltd.",
+      "industry": "Metals & Mining",
+      "composite_score": 0.9241,
+      "momentum_12m_ex_1m": 0.2344,
+      "annualised_volatility": 0.2499
+    },
+    {
+      "ticker": "IDEA",
+      "name": "Vodafone Idea Ltd.",
+      "industry": "Telecommunication",
+      "composite_score": 0.9228,
+      "momentum_12m_ex_1m": 0.6817,
+      "annualised_volatility": 0.3895
+    },
+    {
+      "ticker": "SONACOMS",
+      "name": "Sona BLW Precision Forgings Ltd.",
+      "industry": "Automobile and Auto Components",
+      "composite_score": 0.9183,
+      "momentum_12m_ex_1m": 0.4825,
+      "annualised_volatility": 0.3283
+    },
+    {
+      "ticker": "WELCORP",
+      "name": "Welspun Corp Ltd.",
+      "industry": "Capital Goods",
+      "composite_score": 0.9139,
+      "momentum_12m_ex_1m": 0.821,
+      "annualised_volatility": 0.4346
+    },
+    {
+      "ticker": "ANURAS",
+      "name": "Anupam Rasayan India Ltd.",
+      "industry": "Chemicals",
+      "composite_score": 0.871,
+      "momentum_12m_ex_1m": 0.0556,
+      "annualised_volatility": 0.2042
+    },
+    {
+      "ticker": "ALKEM",
+      "name": "Alkem Laboratories Ltd.",
+      "industry": "Healthcare",
+      "composite_score": 0.8694,
+      "momentum_12m_ex_1m": 0.1303,
+      "annualised_volatility": 0.2278
+    },
+    {
+      "ticker": "SBIN",
+      "name": "State Bank of India",
+      "industry": "Financial Services",
+      "composite_score": 0.8673,
+      "momentum_12m_ex_1m": 0.2228,
+      "annualised_volatility": 0.257
+    },
+    {
+      "ticker": "CASTROLIND",
+      "name": "Castrol India Ltd.",
+      "industry": "Oil Gas & Consumable Fuels",
+      "composite_score": 0.8558,
+      "momentum_12m_ex_1m": -0.1731,
+      "annualised_volatility": 0.1358
+    },
+    {
+      "ticker": "DIVISLAB",
+      "name": "Divi's Laboratories Ltd.",
+      "industry": "Healthcare",
+      "composite_score": 0.8553,
+      "momentum_12m_ex_1m": 0.1464,
+      "annualised_volatility": 0.2354
+    },
+    {
+      "ticker": "BHEL",
+      "name": "Bharat Heavy Electricals Ltd.",
+      "industry": "Capital Goods",
+      "composite_score": 0.8497,
+      "momentum_12m_ex_1m": 0.5998,
+      "annualised_volatility": 0.3777
+    },
+    {
+      "ticker": "EICHERMOT",
+      "name": "Eicher Motors Ltd.",
+      "industry": "Automobile and Auto Components",
+      "composite_score": 0.8262,
+      "momentum_12m_ex_1m": 0.3768,
+      "annualised_volatility": 0.3127
+    },
+    {
+      "ticker": "HINDCOPPER",
+      "name": "Hindustan Copper Ltd.",
+      "industry": "Metals & Mining",
+      "composite_score": 0.8255,
+      "momentum_12m_ex_1m": 0.8063,
+      "annualised_volatility": 0.4466
+    },
+    {
+      "ticker": "ASIANPAINT",
+      "name": "Asian Paints Ltd.",
+      "industry": "Consumer Durables",
+      "composite_score": 0.818,
+      "momentum_12m_ex_1m": 0.1499,
+      "annualised_volatility": 0.2435
+    },
+    {
+      "ticker": "RBLBANK",
+      "name": "RBL Bank Ltd.",
+      "industry": "Financial Services",
+      "composite_score": 0.8053,
+      "momentum_12m_ex_1m": 0.383,
+      "annualised_volatility": 0.3185
+    },
+    {
+      "ticker": "TVSMOTOR",
+      "name": "TVS Motor Company Ltd.",
+      "industry": "Automobile and Auto Components",
+      "composite_score": 0.8052,
+      "momentum_12m_ex_1m": 0.4157,
+      "annualised_volatility": 0.3287
+    },
+    {
+      "ticker": "VTL",
+      "name": "Vardhman Textiles Ltd.",
+      "industry": "Textiles",
+      "composite_score": 0.7907,
+      "momentum_12m_ex_1m": 0.2537,
+      "annualised_volatility": 0.281
+    },
+    {
+      "ticker": "NTPC",
+      "name": "NTPC Ltd.",
+      "industry": "Power",
+      "composite_score": 0.7904,
+      "momentum_12m_ex_1m": 0.0025,
+      "annualised_volatility": 0.2028
+    },
+    {
+      "ticker": "CCL",
+      "name": "CCL Products (I) Ltd.",
+      "industry": "Fast Moving Consumer Goods",
+      "composite_score": 0.7888,
+      "momentum_12m_ex_1m": 0.3489,
+      "annualised_volatility": 0.311
+    },
+    {
+      "ticker": "FORTIS",
+      "name": "Fortis Healthcare Ltd.",
+      "industry": "Healthcare",
+      "composite_score": 0.7842,
+      "momentum_12m_ex_1m": 0.175,
+      "annualised_volatility": 0.2577
+    },
+    {
+      "ticker": "AIAENG",
+      "name": "AIA Engineering Ltd.",
+      "industry": "Capital Goods",
+      "composite_score": 0.7769,
+      "momentum_12m_ex_1m": 0.3469,
+      "annualised_volatility": 0.3126
+    },
+    {
+      "ticker": "POWERGRID",
+      "name": "Power Grid Corporation of India Ltd.",
+      "industry": "Power",
+      "composite_score": 0.7658,
+      "momentum_12m_ex_1m": -0.0464,
+      "annualised_volatility": 0.1922
+    },
+    {
+      "ticker": "NAVINFLUOR",
+      "name": "Navin Fluorine International Ltd.",
+      "industry": "Chemicals",
+      "composite_score": 0.7594,
+      "momentum_12m_ex_1m": 0.5286,
+      "annualised_volatility": 0.3725
+    },
+    {
+      "ticker": "NMDC",
+      "name": "NMDC Ltd.",
+      "industry": "Metals & Mining",
+      "composite_score": 0.7582,
+      "momentum_12m_ex_1m": 0.2342,
+      "annualised_volatility": 0.281
+    },
+    {
+      "ticker": "COALINDIA",
+      "name": "Coal India Ltd.",
+      "industry": "Oil Gas & Consumable Fuels",
+      "composite_score": 0.7579,
+      "momentum_12m_ex_1m": 0.0626,
+      "annualised_volatility": 0.2276
+    },
+    {
+      "ticker": "TATASTEEL",
+      "name": "Tata Steel Ltd.",
+      "industry": "Metals & Mining",
+      "composite_score": 0.747,
+      "momentum_12m_ex_1m": 0.1712,
+      "annualised_volatility": 0.2635
+    },
+    {
+      "ticker": "LTF",
+      "name": "L&T Finance Ltd.",
+      "industry": "Financial Services",
+      "composite_score": 0.7426,
+      "momentum_12m_ex_1m": 0.5475,
+      "annualised_volatility": 0.3815
+    },
+    {
+      "ticker": "ICICIBANK",
+      "name": "ICICI Bank Ltd.",
+      "industry": "Financial Services",
+      "composite_score": 0.7307,
+      "momentum_12m_ex_1m": 0.0135,
+      "annualised_volatility": 0.2174
+    },
+    {
+      "ticker": "PVRINOX",
+      "name": "PVR INOX Ltd.",
+      "industry": "Media Entertainment & Publication",
+      "composite_score": 0.7296,
+      "momentum_12m_ex_1m": 0.1679,
+      "annualised_volatility": 0.2657
+    },
+    {
+      "ticker": "ZYDUSLIFE",
+      "name": "Zydus Lifesciences Ltd.",
+      "industry": "Healthcare",
+      "composite_score": 0.726,
+      "momentum_12m_ex_1m": 0.1424,
+      "annualised_volatility": 0.2584
+    },
+    {
+      "ticker": "CRAFTSMAN",
+      "name": "Craftsman Automation Ltd.",
+      "industry": "Automobile and Auto Components",
+      "composite_score": 0.7193,
+      "momentum_12m_ex_1m": 0.5273,
+      "annualised_volatility": 0.3796
+    },
+    {
+      "ticker": "PHOENIXLTD",
+      "name": "Phoenix Mills Ltd.",
+      "industry": "Realty",
+      "composite_score": 0.7031,
+      "momentum_12m_ex_1m": 0.2716,
+      "annualised_volatility": 0.303
+    },
+    {
+      "ticker": "BHARTIARTL",
+      "name": "Bharti Airtel Ltd.",
+      "industry": "Telecommunication",
+      "composite_score": 0.7007,
+      "momentum_12m_ex_1m": 0.0105,
+      "annualised_volatility": 0.2221
+    },
+    {
+      "ticker": "GRASIM",
+      "name": "Grasim Industries Ltd.",
+      "industry": "Construction Materials",
+      "composite_score": 0.6978,
+      "momentum_12m_ex_1m": 0.1253,
+      "annualised_volatility": 0.2584
+    },
+    {
+      "ticker": "AJANTPHARM",
+      "name": "Ajanta Pharmaceuticals Ltd.",
+      "industry": "Healthcare",
+      "composite_score": 0.6968,
+      "momentum_12m_ex_1m": 0.219,
+      "annualised_volatility": 0.2878
+    },
+    {
+      "ticker": "SBILIFE",
+      "name": "SBI Life Insurance Company Ltd.",
+      "industry": "Financial Services",
+      "composite_score": 0.6922,
+      "momentum_12m_ex_1m": 0.0511,
+      "annualised_volatility": 0.2363
+    },
+    {
+      "ticker": "BSE",
+      "name": "BSE Ltd.",
+      "industry": "Financial Services",
+      "composite_score": 0.6769,
+      "momentum_12m_ex_1m": 0.4309,
+      "annualised_volatility": 0.3575
+    },
+    {
+      "ticker": "POLYCAB",
+      "name": "Polycab India Ltd.",
+      "industry": "Capital Goods",
+      "composite_score": 0.6753,
+      "momentum_12m_ex_1m": 0.3138,
+      "annualised_volatility": 0.3213
+    },
+    {
+      "ticker": "ABCAPITAL",
+      "name": "Aditya Birla Capital Ltd.",
+      "industry": "Financial Services",
+      "composite_score": 0.6682,
+      "momentum_12m_ex_1m": 0.4781,
+      "annualised_volatility": 0.3739
+    },
+    {
+      "ticker": "IPCALAB",
+      "name": "Ipca Laboratories Ltd.",
+      "industry": "Healthcare",
+      "composite_score": 0.6668,
+      "momentum_12m_ex_1m": 0.2038,
+      "annualised_volatility": 0.2887
+    },
+    {
+      "ticker": "FLUOROCHEM",
+      "name": "Gujarat Fluorochemicals Ltd.",
+      "industry": "Chemicals",
+      "composite_score": 0.6646,
+      "momentum_12m_ex_1m": 0.3305,
+      "annualised_volatility": 0.3286
+    },
+    {
+      "ticker": "3MINDIA",
+      "name": "3M India Ltd.",
+      "industry": "Diversified",
+      "composite_score": 0.6607,
+      "momentum_12m_ex_1m": 0.1808,
+      "annualised_volatility": 0.2827
+    },
+    {
+      "ticker": "BRITANNIA",
+      "name": "Britannia Industries Ltd.",
+      "industry": "Fast Moving Consumer Goods",
+      "composite_score": 0.6574,
+      "momentum_12m_ex_1m": -0.0499,
+      "annualised_volatility": 0.2114
+    },
+    {
+      "ticker": "PIDILITIND",
+      "name": "Pidilite Industries Ltd.",
+      "industry": "Chemicals",
+      "composite_score": 0.6571,
+      "momentum_12m_ex_1m": 0.0894,
+      "annualised_volatility": 0.2548
+    },
+    {
+      "ticker": "USHAMART",
+      "name": "Usha Martin Ltd.",
+      "industry": "Capital Goods",
+      "composite_score": 0.6487,
+      "momentum_12m_ex_1m": 0.3235,
+      "annualised_volatility": 0.3294
+    },
+    {
+      "ticker": "POWERINDIA",
+      "name": "Hitachi Energy India Ltd.",
+      "industry": "Capital Goods",
+      "composite_score": 0.6401,
+      "momentum_12m_ex_1m": 0.6252,
+      "annualised_volatility": 0.4249
+    },
+    {
+      "ticker": "ADANIPORTS",
+      "name": "Adani Ports and Special Economic Zone Ltd.",
+      "industry": "Services",
+      "composite_score": 0.6325,
+      "momentum_12m_ex_1m": 0.184,
+      "annualised_volatility": 0.2889
+    },
+    {
+      "ticker": "CIPLA",
+      "name": "Cipla Ltd.",
+      "industry": "Healthcare",
+      "composite_score": 0.6232,
+      "momentum_12m_ex_1m": -0.0055,
+      "annualised_volatility": 0.2316
+    },
+    {
+      "ticker": "MARUTI",
+      "name": "Maruti Suzuki India Ltd.",
+      "industry": "Automobile and Auto Components",
+      "composite_score": 0.616,
+      "momentum_12m_ex_1m": 0.118,
+      "annualised_volatility": 0.2715
+    },
+    {
+      "ticker": "MANAPPURAM",
+      "name": "Manappuram Finance Ltd.",
+      "industry": "Financial Services",
+      "composite_score": 0.6139,
+      "momentum_12m_ex_1m": 0.3674,
+      "annualised_volatility": 0.3495
+    },
+    {
+      "ticker": "SHRIRAMFIN",
+      "name": "Shriram Finance Ltd.",
+      "industry": "Financial Services",
+      "composite_score": 0.6107,
+      "momentum_12m_ex_1m": 0.5699,
+      "annualised_volatility": 0.4132
+    },
+    {
+      "ticker": "AUBANK",
+      "name": "AU Small Finance Bank Ltd.",
+      "industry": "Financial Services",
+      "composite_score": 0.6036,
+      "momentum_12m_ex_1m": 0.3079,
+      "annualised_volatility": 0.3329
+    },
+    {
+      "ticker": "HEROMOTOCO",
+      "name": "Hero MotoCorp Ltd.",
+      "industry": "Automobile and Auto Components",
+      "composite_score": 0.5952,
+      "momentum_12m_ex_1m": 0.1588,
+      "annualised_volatility": 0.2881
+    },
+    {
+      "ticker": "ONGC",
+      "name": "Oil & Natural Gas Corporation Ltd.",
+      "industry": "Oil Gas & Consumable Fuels",
+      "composite_score": 0.5915,
+      "momentum_12m_ex_1m": -0.0228,
+      "annualised_volatility": 0.2322
+    },
+    {
+      "ticker": "ABB",
+      "name": "ABB India Ltd.",
+      "industry": "Capital Goods",
+      "composite_score": 0.5887,
+      "momentum_12m_ex_1m": 0.2968,
+      "annualised_volatility": 0.3323
+    },
+    {
+      "ticker": "GVT&D",
+      "name": "GE Vernova T&D India Ltd.",
+      "industry": "Capital Goods",
+      "composite_score": 0.5768,
+      "momentum_12m_ex_1m": 0.6969,
+      "annualised_volatility": 0.4592
+    },
+    {
+      "ticker": "BIOCON",
+      "name": "Biocon Ltd.",
+      "industry": "Healthcare",
+      "composite_score": 0.574,
+      "momentum_12m_ex_1m": 0.0859,
+      "annualised_volatility": 0.2693
+    },
+    {
+      "ticker": "AXISBANK",
+      "name": "Axis Bank Ltd.",
+      "industry": "Financial Services",
+      "composite_score": 0.5633,
+      "momentum_12m_ex_1m": 0.0652,
+      "annualised_volatility": 0.2649
+    }
+  ],
+  "verdict": "ship",
+  "caveat": "A probability, not a promise: this basket beat the real Nifty 500 index in 10 of 15 historical quarters on this walk-forward test. It has a known failure mode (momentum crashes sharply on some market reversals) and is based on price history only - nothing about any company's actual business. This ranks real, currently-listed companies; it is not a guarantee about any of them."
+}
