@@ -19,8 +19,14 @@ import { authed, type Result } from './session';
    ═══════════════════════════════════════════════════════════════════ */
 
 export function getCoachAdvice(context: string): Promise<Result<{ advice: string }>> {
+    // Explicit, generous timeout: the Go API's own Gemini client allows up
+    // to 20s for generation (see internal/gemini.New's comment), plus
+    // whatever a cold Render free-tier instance adds on top. The default
+    // 12s here would abort and show "Cannot reach the server" - a raw
+    // network error - before the backend ever gets to answer, or to
+    // return its own clean "not configured"/"unavailable" message.
     return authed<{ advice: string }>('/v1/coach', {
         method: 'POST',
         body: JSON.stringify({ context }),
-    });
+    }, 25_000);
 }
